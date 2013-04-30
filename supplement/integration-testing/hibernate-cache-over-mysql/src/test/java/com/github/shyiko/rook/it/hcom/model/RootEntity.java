@@ -20,15 +20,14 @@ import org.hibernate.annotations.Cache;
 
 import javax.persistence.*;
 import javax.persistence.CascadeType;
-import javax.persistence.Entity;
 import java.util.Set;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
-@Entity
-public class House {
+@javax.persistence.Entity
+public class RootEntity {
 
     @Id
     @GeneratedValue
@@ -39,26 +38,33 @@ public class House {
     @OneToOne(cascade = {
         CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.DETACH
     })
-    private Teacher head;
+    private OneToOneEntity oneToOneEntity;
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
     @LazyCollection(LazyCollectionOption.TRUE)
     @Cascade(org.hibernate.annotations.CascadeType.SAVE_UPDATE)
     @OneToMany(cascade = {
         CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.DETACH
     }, fetch = FetchType.LAZY)
-    private Set<Student> students;
+    private Set<OneToManyEntity> oneToManyEntities;
+    @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
+    @LazyCollection(LazyCollectionOption.TRUE)
+    @Cascade(org.hibernate.annotations.CascadeType.SAVE_UPDATE)
+    @OneToMany(cascade = {
+        CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.DETACH
+    }, fetch = FetchType.LAZY, mappedBy = "rootEntity")
+    private Set<JoinedOneToManyEntity> joinedOneToManyEntities;
 
-    public House() {
+    public RootEntity() {
     }
 
-    public House(String name) {
+    public RootEntity(String name) {
         this.name = name;
     }
 
-    public House(String name, Teacher head, Set<Student> students) {
+    public RootEntity(String name, OneToOneEntity oneToOneEntity, Set<OneToManyEntity> oneToManyEntities) {
         this.name = name;
-        this.head = head;
-        this.students = students;
+        this.oneToOneEntity = oneToOneEntity;
+        this.oneToManyEntities = oneToManyEntities;
     }
 
     public String getName() {
@@ -69,19 +75,30 @@ public class House {
         this.name = name;
     }
 
-    public Teacher getHead() {
-        return head;
+    public OneToOneEntity getOneToOneEntity() {
+        return oneToOneEntity;
     }
 
-    public void setHead(Teacher head) {
-        this.head = head;
+    public void setOneToOneEntity(OneToOneEntity oneToOneEntity) {
+        this.oneToOneEntity = oneToOneEntity;
     }
 
-    public Set<Student> getStudents() {
-        return students;
+    public Set<OneToManyEntity> getOneToManyEntities() {
+        return oneToManyEntities;
     }
 
-    public void setStudents(Set<Student> students) {
-        this.students = students;
+    public void setOneToManyEntities(Set<OneToManyEntity> oneToManyEntities) {
+        this.oneToManyEntities = oneToManyEntities;
+    }
+
+    public Set<JoinedOneToManyEntity> getJoinedOneToManyEntities() {
+        return joinedOneToManyEntities;
+    }
+
+    public void setJoinedOneToManyEntities(Set<JoinedOneToManyEntity> joinedOneToManyEntities) {
+        for (JoinedOneToManyEntity directedOneToManyEntity : joinedOneToManyEntities) {
+            directedOneToManyEntity.setRootEntity(this);
+        }
+        this.joinedOneToManyEntities = joinedOneToManyEntities;
     }
 }

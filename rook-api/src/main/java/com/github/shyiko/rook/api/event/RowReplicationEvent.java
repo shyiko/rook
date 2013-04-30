@@ -15,6 +15,8 @@
  */
 package com.github.shyiko.rook.api.event;
 
+import java.io.Serializable;
+
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
@@ -22,9 +24,9 @@ public abstract class RowReplicationEvent implements ReplicationEvent {
 
     protected String database;
     protected String table;
-    protected String[] values;
+    protected Serializable[] values;
 
-    protected RowReplicationEvent(String database, String table, String[] values) {
+    protected RowReplicationEvent(String database, String table, Serializable[] values) {
         this.database = database;
         this.table = table;
         this.values = values;
@@ -38,7 +40,7 @@ public abstract class RowReplicationEvent implements ReplicationEvent {
         return table;
     }
 
-    public String[] getValues() {
+    public Serializable[] getValues() {
         return values;
     }
 }

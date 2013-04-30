@@ -16,26 +16,30 @@
 package com.github.shyiko.rook.api.event;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
+import java.io.Serializable;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 public class UpdateRowReplicationEvent extends RowReplicationEvent {
 
-    private String[] previousValues;
+    private Serializable[] previousValues;
 
-    public UpdateRowReplicationEvent(String database, String table, String[] previousValues, String[] values) {
+    public UpdateRowReplicationEvent(String database, String table, Serializable[] previousValues,
+            Serializable[] values) {
         super(database, table, values);
         this.previousValues = previousValues;
     }
 
-    public String[] getPreviousValues() {
+    public Serializable[] getPreviousValues() {
         return previousValues;
     }
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this).
+        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
             append("database", database).
             append("table", table).
             append("previousValues", previousValues).

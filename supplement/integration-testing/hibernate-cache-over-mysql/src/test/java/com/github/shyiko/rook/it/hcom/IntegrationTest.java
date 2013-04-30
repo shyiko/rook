@@ -18,30 +18,41 @@ package com.github.shyiko.rook.it.hcom;
 import com.github.shyiko.rook.api.ReplicationListener;
 import com.github.shyiko.rook.api.ReplicationStream;
 import com.github.shyiko.rook.api.event.InsertRowReplicationEvent;
+import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.UpdateRowReplicationEvent;
-import com.github.shyiko.rook.it.hcom.model.House;
-import com.github.shyiko.rook.it.hcom.model.Student;
-import com.github.shyiko.rook.it.hcom.model.Teacher;
+import com.github.shyiko.rook.it.hcom.model.OneToManyEntity;
+import com.github.shyiko.rook.it.hcom.model.OneToOneEntity;
+import com.github.shyiko.rook.it.hcom.model.RootEntity;
+import com.github.shyiko.rook.source.mysql.MySQLReplicationStream;
 import com.github.shyiko.rook.target.hibernate.cache.QueryCacheSynchronizer;
 import com.github.shyiko.rook.target.hibernate.cache.SecondLevelCacheSynchronizer;
-import com.github.shyiko.rook.source.mysql.MySQLReplicationStream;
+import com.github.shyiko.rook.target.hibernate.cache.mapping.EvictionTargetRegistry;
 import net.sf.ehcache.CacheManager;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.support.GenericXmlApplicationContext;
+import org.springframework.orm.hibernate4.LocalSessionFactoryBean;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.Serializable;
 import java.net.URI;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.ResourceBundle;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -66,6 +77,19 @@ public class IntegrationTest {
         replicationStream.connect();
     }
 
+    @BeforeMethod
+    public void beforeTest() {
+        replicationStream.registerListener(new ReplicationListener() {
+
+            @Override
+            public void onEvent(ReplicationEvent event) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received " + event);
+                }
+            }
+        });
+    }
+
     @Test
     public void testQueryCacheIsNotEvictedWithoutQCS() throws Exception {
         testQueryCacheEviction(false);
@@ -88,7 +112,7 @@ public class IntegrationTest {
 
             @Override
             public void callback(Session session) {
-                assertEquals(session.createQuery("from House").setCacheable(true).list().size(), 0);
+                assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(), 0);
             }
         });
         CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener(
@@ -99,7 +123,7 @@ public class IntegrationTest {
 
             @Override
             public void callback(Session session) {
-                session.persist(new House("Slytherin"));
+                session.persist(new RootEntity("Slytherin"));
             }
         });
         assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
@@ -107,7 +131,7 @@ public class IntegrationTest {
 
             @Override
             public void callback(Session session) {
-                assertEquals(session.createQuery("from House").setCacheable(true).list().size(),
+                assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(),
                     enableQCS ? 1 : 0);
             }
         });
@@ -127,22 +151,25 @@ public class IntegrationTest {
         ExecutionContext masterContext = ExecutionContextHolder.get("master");
         ExecutionContext slaveContext = ExecutionContextHolder.get("slave");
         if (enableSLCS) {
+            LocalSessionFactoryBean sessionFactoryBean = masterContext.getBean(LocalSessionFactoryBean.class);
+            Configuration configuration = sessionFactoryBean.getConfiguration();
             replicationStream.registerListener(
-                new SecondLevelCacheSynchronizer(slaveContext.getBean(SessionFactory.class))
+                new SecondLevelCacheSynchronizer(slaveContext.getBean(SessionFactory.class),
+                    new EvictionTargetRegistry(configuration))
             );
         }
-        final AtomicReference<Serializable> houseId = new AtomicReference<Serializable>();
+        final AtomicReference<Serializable> rootEntityId = new AtomicReference<Serializable>();
         masterContext.execute(masterContext.new Callback() {
 
             @Override
             public void callback(Session session) {
-                houseId.set(session.save(new House(
+                rootEntityId.set(session.save(new RootEntity(
                     "Slytherin",
-                    new Teacher("Severus Snape"),
-                    new HashSet<Student>(Arrays.asList(
-                        new Student("Draco Malfoy"),
-                        new Student("Vincent Crabbe"),
-                        new Student("Gregory Goyle")
+                    new OneToOneEntity("Severus Snape"),
+                    new HashSet<OneToManyEntity>(Arrays.asList(
+                        new OneToManyEntity("Draco Malfoy"),
+                        new OneToManyEntity("Vincent Crabbe"),
+                        new OneToManyEntity("Gregory Goyle")
                     ))
                 )));
             }
@@ -155,17 +182,17 @@ public class IntegrationTest {
 
             @Override
             public void callback(Session session) {
-                House house = (House) session.get(House.class, houseId.get());
-                assertEquals(house.getName(), "Slytherin");
+                RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId.get());
+                assertEquals(rootEntity.getName(), "Slytherin");
             }
         });
         masterContext.execute(masterContext.new Callback() {
 
             @Override
             public void callback(Session session) {
-                House house = (House) session.get(House.class, houseId.get());
-                house.setName("Slytherin House");
-                session.merge(house);
+                RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId.get());
+                rootEntity.setName("Slytherin House");
+                session.merge(rootEntity);
             }
         });
         assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
@@ -173,8 +200,8 @@ public class IntegrationTest {
 
             @Override
             public void callback(Session session) {
-                House house = (House) session.get(House.class, houseId.get());
-                assertEquals(house.getName(), enableSLCS ? "Slytherin House" : "Slytherin");
+                RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId.get());
+                assertEquals(rootEntity.getName(), enableSLCS ? "Slytherin House" : "Slytherin");
             }
         });
     }

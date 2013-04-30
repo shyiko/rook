@@ -29,9 +29,11 @@ import com.google.code.or.binlog.impl.event.WriteRowsEvent;
 import com.google.code.or.common.glossary.Column;
 import com.google.code.or.common.glossary.Pair;
 import com.google.code.or.common.glossary.Row;
+import com.google.code.or.common.glossary.column.StringColumn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -95,12 +97,13 @@ public class OpenReplicatorEventListener implements BinlogEventListener {
         }
     }
 
-    private String[] columnsOf(Row row) {
+    private Serializable[] columnsOf(Row row) {
         List<Column> columns = row.getColumns();
-        String[] columnsSerialized = new String[columns.size()];
+        Serializable[] columnsSerialized = new Serializable[columns.size()];
         int index = 0;
         for (Column column : columns) {
-            columnsSerialized[index++] = column.toString();
+            columnsSerialized[index++] = column instanceof StringColumn ? column.toString() :
+                (Serializable) column.getValue();
         }
         return columnsSerialized;
     }

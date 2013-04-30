@@ -18,20 +18,24 @@ package com.github.shyiko.rook.target.hibernate.cache;
 import com.github.shyiko.rook.api.ReplicationListener;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.RowReplicationEvent;
+import com.github.shyiko.rook.target.hibernate.cache.mapping.EvictionTarget;
+import com.github.shyiko.rook.target.hibernate.cache.mapping.EvictionTargetRegistry;
+import org.hibernate.Cache;
 import org.hibernate.SessionFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.io.Serializable;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 public class SecondLevelCacheSynchronizer implements ReplicationListener {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
     private SessionFactory sessionFactory;
+    private EvictionTargetRegistry evictionTargetRegistry;
 
-    public SecondLevelCacheSynchronizer(SessionFactory sessionFactory) {
+    public SecondLevelCacheSynchronizer(SessionFactory sessionFactory, EvictionTargetRegistry evictionTargetRegistry) {
         this.sessionFactory = sessionFactory;
+        this.evictionTargetRegistry = evictionTargetRegistry;
     }
 
     @Override
@@ -39,9 +43,20 @@ public class SecondLevelCacheSynchronizer implements ReplicationListener {
         if (!(event instanceof RowReplicationEvent)) {
             return;
         }
-        if (logger.isDebugEnabled()) {
-            logger.debug("Cleaning 2nd Level Cache in response to " + event);
+        RowReplicationEvent rowEvent = (RowReplicationEvent) event;
+        String tableName = rowEvent.getTable();
+        Cache cache = sessionFactory.getCache();
+        for (EvictionTarget evictionTarget : evictionTargetRegistry.getEvictionTargets(tableName)) {
+            Serializable[] id = evictionTarget.getPrimaryKey().of(rowEvent.getValues());
+            if (id.length != 1) {
+                throw new UnsupportedOperationException(); // todo: yet to implement
+            }
+            Serializable key = id[0];
+            if (evictionTarget.isCollection()) {
+                cache.evictCollection(evictionTarget.getName(), key);
+            } else {
+                cache.evictEntity(evictionTarget.getName(), key);
+            }
         }
-        sessionFactory.getCache().evictEntityRegions();
     }
 }

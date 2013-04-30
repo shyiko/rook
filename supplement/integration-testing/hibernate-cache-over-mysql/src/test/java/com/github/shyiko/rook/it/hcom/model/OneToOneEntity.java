@@ -28,7 +28,7 @@ import javax.persistence.Id;
  */
 @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
 @Entity
-public class Teacher {
+public class OneToOneEntity {
 
     @Id
     @GeneratedValue
@@ -36,10 +36,10 @@ public class Teacher {
     @Column(nullable = false)
     private String name;
 
-    public Teacher() {
+    public OneToOneEntity() {
     }
 
-    public Teacher(String name) {
+    public OneToOneEntity(String name) {
         this.name = name;
     }
 
@@ -55,7 +55,7 @@ public class Teacher {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Teacher teacher = (Teacher) o;
+        OneToOneEntity teacher = (OneToOneEntity) o;
         return name.equals(teacher.name);
 
     }
