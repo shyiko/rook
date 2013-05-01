@@ -16,7 +16,11 @@
         <property name="password" value="${datasource.password}"/>
     </bean>
 
-    <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+    <bean id="cmShutdownHook" class="com.github.shyiko.rook.it.hcom.HibernateCacheManagerShutdownInResponseToCCE">
+        <constructor-arg value="${net.sf.ehcache.configurationResourceName}"/>
+    </bean>
+
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean" depends-on="cmShutdownHook">
         <property name="dataSource" ref="dataSource"/>
         <property name="packagesToScan" value="com.github.shyiko.rook.it.hcom.model"/>
         <property name="hibernateProperties">
@@ -40,16 +44,10 @@
 
     <beans profile="master">
         <context:property-placeholder location="classpath:master.properties"/>
-        <bean class="com.github.shyiko.rook.it.hcom.HibernateCacheManagerShutdownInResponseToCCE">
-            <constructor-arg value="master"/>
-        </bean>
     </beans>
 
     <beans profile="slave">
         <context:property-placeholder location="classpath:slave.properties"/>
-        <bean class="com.github.shyiko.rook.it.hcom.HibernateCacheManagerShutdownInResponseToCCE">
-            <constructor-arg value="slave"/>
-        </bean>
     </beans>
 
 </beans>

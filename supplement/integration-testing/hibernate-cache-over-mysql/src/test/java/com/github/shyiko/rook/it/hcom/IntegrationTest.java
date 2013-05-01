@@ -256,13 +256,6 @@ public class IntegrationTest {
                 } catch (Exception e) {
                     logger.warn("Failed to start " + profile + " context. " +
                         (numberOfRetries == 0 ? "" : "Reattempt in " + timeoutBetweenRetriesInMs + "ms"));
-                    // failure of context.refresh leaves alive CacheManager instance
-                    // shutting it down before reattempting
-                    // todo: is this really needed when there is HibernateCacheManagerShutdownInResponseToCCE
-                    CacheManager cacheManager = CacheManager.getCacheManager(profile + "-ehcache");
-                    if (cacheManager != null) {
-                        cacheManager.shutdown();
-                    }
                     try {
                         Thread.sleep(timeoutBetweenRetriesInMs);
                     } catch (InterruptedException ie) {
