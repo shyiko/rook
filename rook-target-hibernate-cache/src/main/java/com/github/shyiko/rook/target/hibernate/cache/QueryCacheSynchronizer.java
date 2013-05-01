@@ -20,11 +20,11 @@ import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.RowReplicationEvent;
 import org.hibernate.Cache;
 import org.hibernate.SessionFactory;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * todo: factory.getSettings().isQueryCacheEnabled()
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 public class QueryCacheSynchronizer implements ReplicationListener {
@@ -34,10 +34,15 @@ public class QueryCacheSynchronizer implements ReplicationListener {
 
     public QueryCacheSynchronizer(SessionFactory sessionFactory) {
         this.sessionFactory = sessionFactory;
+        if (!((SessionFactoryImplementor) sessionFactory).getSettings().isQueryCacheEnabled()) {
+            throw new IllegalStateException(
+                "Query Cache (controlled by hibernate.cache.use_query_cache property) is disabled");
+        }
     }
 
     @Override
     public void onEvent(ReplicationEvent event) {
+
         if (!(event instanceof RowReplicationEvent)) {
             return;
         }

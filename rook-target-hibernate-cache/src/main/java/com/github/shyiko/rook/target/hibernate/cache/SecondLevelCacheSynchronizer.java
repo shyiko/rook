@@ -22,6 +22,7 @@ import com.github.shyiko.rook.target.hibernate.cache.mapping.EvictionTarget;
 import com.github.shyiko.rook.target.hibernate.cache.mapping.EvictionTargetRegistry;
 import org.hibernate.Cache;
 import org.hibernate.SessionFactory;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 
 import java.io.Serializable;
 
@@ -36,6 +37,10 @@ public class SecondLevelCacheSynchronizer implements ReplicationListener {
     public SecondLevelCacheSynchronizer(SessionFactory sessionFactory, EvictionTargetRegistry evictionTargetRegistry) {
         this.sessionFactory = sessionFactory;
         this.evictionTargetRegistry = evictionTargetRegistry;
+        if (!((SessionFactoryImplementor) sessionFactory).getSettings().isSecondLevelCacheEnabled()) {
+            throw new IllegalStateException(
+                "Second Level Cache (controlled by hibernate.cache.use_second_level_cache property) is disabled");
+        }
     }
 
     @Override
