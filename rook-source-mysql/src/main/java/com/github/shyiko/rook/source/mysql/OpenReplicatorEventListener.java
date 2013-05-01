@@ -57,8 +57,8 @@ public class OpenReplicatorEventListener implements BinlogEventListener {
     public synchronized void removeListener(Class<? extends ReplicationListener> listenerClass) {
         Iterator<ReplicationListener> iterator = listeners.iterator();
         while (iterator.hasNext()) {
-            iterator.next();
-            if (listenerClass.isInstance(iterator)) {
+            ReplicationListener replicationListener = iterator.next();
+            if (listenerClass.isInstance(replicationListener)) {
                 iterator.remove();
             }
         }
