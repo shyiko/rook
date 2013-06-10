@@ -13,34 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.shyiko.rook.api.event;
-
-import java.io.Serializable;
+package com.github.shyiko.rook.target.hibernate.cache;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public abstract class RowReplicationEvent implements ReplicationEvent {
+public class EvictionTarget {
 
-    protected String schema;
-    protected String table;
-    protected Serializable[] values;
+    /**
+     * className or role depending whether target is an entity or a collection
+     */
+    private String name;
+    private PrimaryKey primaryKey;
+    private boolean collection;
 
-    protected RowReplicationEvent(String schema, String table, Serializable[] values) {
-        this.schema = schema;
-        this.table = table;
-        this.values = values;
+    public EvictionTarget(String name, PrimaryKey primaryKey, boolean collection) {
+        this.name = name;
+        this.primaryKey = primaryKey;
+        this.collection = collection;
     }
 
-    public String getSchema() {
-        return schema;
+    public String getName() {
+        return name;
     }
 
-    public String getTable() {
-        return table;
+    public PrimaryKey getPrimaryKey() {
+        return primaryKey;
     }
 
-    public Serializable[] getValues() {
-        return values;
+    public boolean isCollection() {
+        return collection;
     }
 }

@@ -45,13 +45,18 @@ public class MySQLReplicationStream implements ReplicationStream {
         replicator.setBinlogEventListener(new OpenReplicatorEventListener());
     }
 
+    public MySQLReplicationStream(String hostname) {
+        this();
+        this.hostname = hostname;
+    }
+
     public MySQLReplicationStream(String hostname, int port) {
         this();
         this.hostname = hostname;
         this.port = port;
     }
 
-    public MySQLReplicationStream usingCredentials(String username, String password) {
+    public MySQLReplicationStream authenticateWith(String username, String password) {
         this.username = username;
         this.password = password;
         return this;
@@ -115,6 +120,11 @@ public class MySQLReplicationStream implements ReplicationStream {
         } catch (Exception e) {
             throw new ConnectionException("Failed to establish connection to the replication stream", e);
         }
+    }
+
+    @Override
+    public boolean connected() {
+        return replicator.isRunning();
     }
 
     @Override

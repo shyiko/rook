@@ -40,7 +40,7 @@ public class UpdateRowReplicationEvent extends RowReplicationEvent {
     @Override
     public String toString() {
         return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-            append("database", database).
+            append("schema", schema).
             append("table", table).
             append("previousValues", previousValues).
             append("values", values).

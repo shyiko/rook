@@ -15,32 +15,30 @@
  */
 package com.github.shyiko.rook.api.event;
 
-import java.io.Serializable;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
+import java.util.Collection;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public abstract class RowReplicationEvent implements ReplicationEvent {
+public class GroupOfReplicationEvents implements ReplicationEvent {
 
-    protected String schema;
-    protected String table;
-    protected Serializable[] values;
+    private Collection<ReplicationEvent> events;
 
-    protected RowReplicationEvent(String schema, String table, Serializable[] values) {
-        this.schema = schema;
-        this.table = table;
-        this.values = values;
+    public GroupOfReplicationEvents(Collection<ReplicationEvent> events) {
+        this.events = events;
     }
 
-    public String getSchema() {
-        return schema;
+    public Collection<ReplicationEvent> getEvents() {
+        return events;
     }
 
-    public String getTable() {
-        return table;
-    }
-
-    public Serializable[] getValues() {
-        return values;
+    @Override
+    public String toString() {
+        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
+                append("events", events).
+                toString();
     }
 }

@@ -16,47 +16,59 @@
 package com.github.shyiko.rook.target.hibernate.cache;
 
 import com.github.shyiko.rook.api.ReplicationListener;
+import com.github.shyiko.rook.api.event.GroupOfReplicationEvents;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.RowReplicationEvent;
-import com.github.shyiko.rook.target.hibernate.cache.mapping.EvictionTarget;
-import com.github.shyiko.rook.target.hibernate.cache.mapping.EvictionTargetRegistry;
 import org.hibernate.Cache;
-import org.hibernate.SessionFactory;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
+import java.util.Collection;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 public class SecondLevelCacheSynchronizer implements ReplicationListener {
 
-    private SessionFactory sessionFactory;
-    private EvictionTargetRegistry evictionTargetRegistry;
+    private Logger logger = LoggerFactory.getLogger(getClass());
 
-    public SecondLevelCacheSynchronizer(SessionFactory sessionFactory, EvictionTargetRegistry evictionTargetRegistry) {
-        this.sessionFactory = sessionFactory;
-        this.evictionTargetRegistry = evictionTargetRegistry;
-        if (!((SessionFactoryImplementor) sessionFactory).getSettings().isSecondLevelCacheEnabled()) {
+    private SynchronizationContext synchronizationContext;
+
+    public SecondLevelCacheSynchronizer(SynchronizationContext synchronizationContext) {
+        if (!synchronizationContext.getSessionFactory().getSettings().isSecondLevelCacheEnabled()) {
             throw new IllegalStateException(
                 "Second Level Cache (controlled by hibernate.cache.use_second_level_cache property) is disabled");
         }
+        this.synchronizationContext = synchronizationContext;
     }
 
     @Override
     public void onEvent(ReplicationEvent event) {
-        if (!(event instanceof RowReplicationEvent)) {
-            return;
+        if (event instanceof GroupOfReplicationEvents) {
+            for (ReplicationEvent replicationEvent : ((GroupOfReplicationEvents) event).getEvents()) {
+                evict((RowReplicationEvent) replicationEvent);
+            }
+        } else
+        if (event instanceof RowReplicationEvent) {
+            evict((RowReplicationEvent) event);
         }
-        RowReplicationEvent rowEvent = (RowReplicationEvent) event;
-        String tableName = rowEvent.getTable();
-        Cache cache = sessionFactory.getCache();
-        for (EvictionTarget evictionTarget : evictionTargetRegistry.getEvictionTargets(tableName)) {
-            Serializable[] id = evictionTarget.getPrimaryKey().of(rowEvent.getValues());
+    }
+
+    private void evict(RowReplicationEvent event) {
+        Cache cache = synchronizationContext.getSessionFactory().getCache();
+        String qualifiedName = event.getSchema().toLowerCase() + "." + event.getTable().toLowerCase();
+        Collection<EvictionTarget> evictionTargets = synchronizationContext.getEvictionTargets(qualifiedName);
+        for (EvictionTarget evictionTarget : evictionTargets) {
+            Serializable[] id = evictionTarget.getPrimaryKey().of(event.getValues());
             if (id.length != 1) {
-                throw new UnsupportedOperationException(); // todo: yet to implement
+                throw new UnsupportedOperationException(); // todo(shyiko): yet to implement
             }
             Serializable key = id[0];
+            if (logger.isDebugEnabled()) {
+                logger.debug("Evicting " + evictionTarget.getName() + "#" + key);
+            }
+            // todo(shyiko): do we need a lock here?
             if (evictionTarget.isCollection()) {
                 cache.evictCollection(evictionTarget.getName(), key);
             } else {
@@ -64,4 +76,5 @@ public class SecondLevelCacheSynchronizer implements ReplicationListener {
             }
         }
     }
+
 }

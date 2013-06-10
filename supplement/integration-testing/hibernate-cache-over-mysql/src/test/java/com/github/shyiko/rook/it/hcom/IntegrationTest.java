@@ -26,8 +26,7 @@ import com.github.shyiko.rook.it.hcom.model.RootEntity;
 import com.github.shyiko.rook.source.mysql.MySQLReplicationStream;
 import com.github.shyiko.rook.target.hibernate.cache.QueryCacheSynchronizer;
 import com.github.shyiko.rook.target.hibernate.cache.SecondLevelCacheSynchronizer;
-import com.github.shyiko.rook.target.hibernate.cache.mapping.EvictionTargetRegistry;
-import net.sf.ehcache.CacheManager;
+import com.github.shyiko.rook.target.hibernate.cache.SynchronizationContext;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
@@ -73,7 +72,7 @@ public class IntegrationTest {
         String dsURL = bundle.getString("datasource.url");
         URI uri = new URI("schema" + dsURL.substring(dsURL.indexOf("://")));
         replicationStream = new MySQLReplicationStream(uri.getHost(), uri.getPort()).
-            usingCredentials(bundle.getString("datasource.username"), bundle.getString("datasource.password"));
+            authenticateWith(bundle.getString("datasource.username"), bundle.getString("datasource.password"));
         replicationStream.connect();
     }
 
@@ -104,8 +103,11 @@ public class IntegrationTest {
         ExecutionContext masterContext = ExecutionContextHolder.get("master");
         ExecutionContext slaveContext = ExecutionContextHolder.get("slave");
         if (enableQCS) {
+            LocalSessionFactoryBean sessionFactoryBean = masterContext.getBean(LocalSessionFactoryBean.class);
+            Configuration configuration = sessionFactoryBean.getConfiguration();
             replicationStream.registerListener(
-                new QueryCacheSynchronizer(slaveContext.getBean(SessionFactory.class))
+                new QueryCacheSynchronizer(new SynchronizationContext(configuration,
+                        slaveContext.getBean(SessionFactory.class)))
             );
         }
         slaveContext.execute(slaveContext.new Callback() {
@@ -154,8 +156,8 @@ public class IntegrationTest {
             LocalSessionFactoryBean sessionFactoryBean = masterContext.getBean(LocalSessionFactoryBean.class);
             Configuration configuration = sessionFactoryBean.getConfiguration();
             replicationStream.registerListener(
-                new SecondLevelCacheSynchronizer(slaveContext.getBean(SessionFactory.class),
-                    new EvictionTargetRegistry(configuration))
+                new SecondLevelCacheSynchronizer(new SynchronizationContext(configuration,
+                        slaveContext.getBean(SessionFactory.class)))
             );
         }
         final AtomicReference<Serializable> rootEntityId = new AtomicReference<Serializable>();
@@ -238,7 +240,7 @@ public class IntegrationTest {
         }
     }
 
-    private static class ExecutionContext {
+    private static final class ExecutionContext {
 
         private GenericXmlApplicationContext context;
         private String profile;

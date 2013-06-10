@@ -13,34 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.shyiko.rook.api.event;
+package com.github.shyiko.rook.target.hibernate.cache;
 
 import java.io.Serializable;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public abstract class RowReplicationEvent implements ReplicationEvent {
+public class PrimaryKey {
 
-    protected String schema;
-    protected String table;
-    protected Serializable[] values;
+    private int[] positionWithinRow;
 
-    protected RowReplicationEvent(String schema, String table, Serializable[] values) {
-        this.schema = schema;
-        this.table = table;
-        this.values = values;
+    public PrimaryKey(int[] positionWithinRow) {
+        this.positionWithinRow = positionWithinRow;
     }
 
-    public String getSchema() {
-        return schema;
-    }
-
-    public String getTable() {
-        return table;
-    }
-
-    public Serializable[] getValues() {
-        return values;
+    public Serializable[] of(Serializable[] row) {
+        Serializable[] result = new Serializable[positionWithinRow.length];
+        for (int index = positionWithinRow.length - 1; index > -1; index--) {
+            result[index] = row[positionWithinRow[index]];
+        }
+        return result;
     }
 }

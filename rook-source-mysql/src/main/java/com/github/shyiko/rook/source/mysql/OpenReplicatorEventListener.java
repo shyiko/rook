@@ -17,6 +17,7 @@ package com.github.shyiko.rook.source.mysql;
 
 import com.github.shyiko.rook.api.ReplicationListener;
 import com.github.shyiko.rook.api.event.DeleteRowReplicationEvent;
+import com.github.shyiko.rook.api.event.GroupOfReplicationEvents;
 import com.github.shyiko.rook.api.event.InsertRowReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.UpdateRowReplicationEvent;
@@ -34,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -72,29 +74,47 @@ public class OpenReplicatorEventListener implements BinlogEventListener {
             tableMap.put(nativeEvent.getTableId(), nativeEvent);
         } else
         if (event instanceof WriteRowsEvent) {
-            WriteRowsEvent nativeEvent = (WriteRowsEvent) event;
-            for (Row row : nativeEvent.getRows()) {
-                TableMapEvent tableMapEvent = tableMap.get(nativeEvent.getTableId());
-                notifyListeners(new InsertRowReplicationEvent(tableMapEvent.getDatabaseName().toString(),
-                    tableMapEvent.getTableName().toString(), columnsOf(row)));
-            }
+            handleWriteRowsEvent((WriteRowsEvent) event);
         } else
         if (event instanceof UpdateRowsEvent) {
-            UpdateRowsEvent nativeEvent = (UpdateRowsEvent) event;
-            for (Pair<Row> row : nativeEvent.getRows()) {
-                TableMapEvent tableMapEvent = tableMap.get(nativeEvent.getTableId());
-                notifyListeners(new UpdateRowReplicationEvent(tableMapEvent.getDatabaseName().toString(),
-                    tableMapEvent.getTableName().toString(), columnsOf(row.getBefore()), columnsOf(row.getAfter())));
-            }
+            handleUpdateRowsEvent((UpdateRowsEvent) event);
         } else
         if (event instanceof DeleteRowsEvent) {
-            DeleteRowsEvent nativeEvent = (DeleteRowsEvent) event;
-            for (Row row : nativeEvent.getRows()) {
-                TableMapEvent tableMapEvent = tableMap.get(nativeEvent.getTableId());
-                notifyListeners(new DeleteRowReplicationEvent(tableMapEvent.getDatabaseName().toString(),
-                    tableMapEvent.getTableName().toString(), columnsOf(row)));
-            }
+            handleDeleteRowsEvent((DeleteRowsEvent) event);
         }
+    }
+
+    private void handleWriteRowsEvent(WriteRowsEvent event) {
+        List<Row> rows = event.getRows();
+        List<ReplicationEvent> replicationEvents = new ArrayList<ReplicationEvent>(rows.size());
+        for (Row row : rows) {
+            TableMapEvent tableMapEvent = tableMap.get(event.getTableId());
+            replicationEvents.add(new InsertRowReplicationEvent(tableMapEvent.getDatabaseName().toString(),
+                tableMapEvent.getTableName().toString(), columnsOf(row)));
+        }
+        notifyListeners(replicationEvents);
+    }
+
+    private void handleUpdateRowsEvent(UpdateRowsEvent event) {
+        List<Pair<Row>> rows = event.getRows();
+        List<ReplicationEvent> replicationEvents = new ArrayList<ReplicationEvent>(rows.size());
+        for (Pair<Row> row : rows) {
+            TableMapEvent tableMapEvent = tableMap.get(event.getTableId());
+            replicationEvents.add(new UpdateRowReplicationEvent(tableMapEvent.getDatabaseName().toString(),
+                    tableMapEvent.getTableName().toString(), columnsOf(row.getBefore()), columnsOf(row.getAfter())));
+        }
+        notifyListeners(replicationEvents);
+    }
+
+    private void handleDeleteRowsEvent(DeleteRowsEvent event) {
+        List<Row> rows = event.getRows();
+        List<ReplicationEvent> replicationEvents = new ArrayList<ReplicationEvent>(rows.size());
+        for (Row row : rows) {
+            TableMapEvent tableMapEvent = tableMap.get(event.getTableId());
+            replicationEvents.add(new DeleteRowReplicationEvent(tableMapEvent.getDatabaseName().toString(),
+                    tableMapEvent.getTableName().toString(), columnsOf(row)));
+        }
+        notifyListeners(replicationEvents);
     }
 
     private Serializable[] columnsOf(Row row) {
@@ -106,6 +126,14 @@ public class OpenReplicatorEventListener implements BinlogEventListener {
                 (Serializable) column.getValue();
         }
         return columnsSerialized;
+    }
+
+    private synchronized void notifyListeners(List<ReplicationEvent> events) {
+        int numberOfEvents = events.size();
+        if (numberOfEvents != 0) {
+            notifyListeners(numberOfEvents == 1 ? events.get(0) :
+                    new GroupOfReplicationEvents(events));
+        }
     }
 
     private synchronized void notifyListeners(ReplicationEvent event) {
