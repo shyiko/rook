@@ -296,6 +296,38 @@ public class IntegrationTest {
         assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
     }
 
+    @Test
+    public void testFlushLogsIsAutomaticallyTakenCareOf() throws Exception {
+        ExecutionContext masterContext = ExecutionContextHolder.get("master");
+        ExecutionContext slaveContext = ExecutionContextHolder.get("slave");
+        CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener(
+                InsertRowReplicationEvent.class, 2
+        );
+        replicationStream.registerListener(countDownReplicationListener);
+        masterContext.execute(masterContext.new Callback() {
+
+            @Override
+            public void callback(Session session) {
+                session.persist(new RootEntity("Slytherin"));
+            }
+        });
+        slaveContext.execute(slaveContext.new Callback() {
+
+            @Override
+            public void callback(Session session) {
+                session.createSQLQuery("flush logs").executeUpdate();
+            }
+        });
+        masterContext.execute(masterContext.new Callback() {
+
+            @Override
+            public void callback(Session session) {
+                session.persist(new RootEntity("Hufflepuff"));
+            }
+        });
+        assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+    }
+
     @AfterMethod(alwaysRun = true)
     public void afterTest() throws Exception {
         replicationStream.unregisterListener(ReplicationListener.class);
