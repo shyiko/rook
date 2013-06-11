@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd" name="slave-sdb-ehcache.xml">
+
+    <defaultCache overflowToDisk="false" timeToIdleSeconds="600"/>
+
+    <cache name="org.hibernate.cache.internal.StandardQueryCache"
+           maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
+    <cache name="org.hibernate.cache.spi.UpdateTimestampsCache"
+           maxEntriesLocalHeap="100" eternal="true" overflowToDisk="false"/>
+
+    <cache name="com.github.shyiko.rook.it.hcom.model.RootEntity"
+           maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
+    <cache name="com.github.shyiko.rook.it.hcom.model.RootEntity.oneToManyEntities"
+           maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
+    <cache name="com.github.shyiko.rook.it.hcom.model.RootEntity.joinedOneToManyEntities"
+           maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
+    <cache name="com.github.shyiko.rook.it.hcom.model.OneToOneEntity"
+           maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
+    <cache name="com.github.shyiko.rook.it.hcom.model.OneToManyEntity"
+           maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
+    <cache name="com.github.shyiko.rook.it.hcom.model.JoinedOneToManyEntity"
+           maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
+
+</ehcache>

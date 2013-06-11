@@ -24,6 +24,7 @@ import com.github.shyiko.rook.it.hcom.model.OneToManyEntity;
 import com.github.shyiko.rook.it.hcom.model.OneToOneEntity;
 import com.github.shyiko.rook.it.hcom.model.RootEntity;
 import com.github.shyiko.rook.source.mysql.MySQLReplicationStream;
+import com.github.shyiko.rook.target.hibernate.cache.HibernateCacheSynchronizer;
 import com.github.shyiko.rook.target.hibernate.cache.QueryCacheSynchronizer;
 import com.github.shyiko.rook.target.hibernate.cache.SecondLevelCacheSynchronizer;
 import com.github.shyiko.rook.target.hibernate.cache.SynchronizationContext;
@@ -139,12 +140,12 @@ public class IntegrationTest {
         });
     }
 
-    @Test()
+    @Test
     public void testSecondLevelCacheIsNotEvictedWithoutSLCS() throws Exception {
         testSecondLevelCacheEviction(false);
     }
 
-    @Test()
+    @Test
     public void testSecondLevelCacheIsEvictedBySLCS() throws Exception {
         testSecondLevelCacheEviction(true);
     }
@@ -204,6 +205,62 @@ public class IntegrationTest {
             public void callback(Session session) {
                 RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId.get());
                 assertEquals(rootEntity.getName(), enableSLCS ? "Slytherin House" : "Slytherin");
+            }
+        });
+    }
+
+    @Test
+    public void testOnlyWiredInDatabaseIsAffected() throws Exception {
+        class ReplicationContext {
+            ExecutionContext master, slave;
+            ReplicationContext(ExecutionContext master, ExecutionContext slave) {
+                this.master = master; this.slave = slave;
+            }
+        }
+        final ReplicationContext primaryContext = new ReplicationContext(
+                ExecutionContextHolder.get("master"), ExecutionContextHolder.get("slave")),
+            separateContext = new ReplicationContext(
+                ExecutionContextHolder.get("master-sdb"), ExecutionContextHolder.get("slave-sdb")
+            );
+        replicationStream.registerListener(new HibernateCacheSynchronizer(
+                primaryContext.master.getBean(LocalSessionFactoryBean.class).getConfiguration(),
+                primaryContext.slave.getBean(SessionFactory.class)
+        ));
+        for (ReplicationContext context : new ReplicationContext[] {primaryContext, separateContext}) {
+            context.slave.execute(context.slave.new Callback() {
+
+                @Override
+                public void callback(Session session) {
+                    assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(), 0);
+                }
+            });
+        }
+        CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener(
+                InsertRowReplicationEvent.class, 2
+        );
+        replicationStream.registerListener(countDownReplicationListener);
+        for (final ReplicationContext group : new ReplicationContext[] {primaryContext, separateContext}) {
+            group.master.execute(group.master.new Callback() {
+
+                @Override
+                public void callback(Session session) {
+                    session.save(new RootEntity("Slytherin"));
+                }
+            });
+        }
+        assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+        primaryContext.slave.execute(primaryContext.slave.new Callback() {
+
+            @Override
+            public void callback(Session session) {
+                assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(), 1);
+            }
+        });
+        separateContext.slave.execute(separateContext.slave.new Callback() {
+
+            @Override
+            public void callback(Session session) {
+                assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(), 0);
             }
         });
     }
@@ -296,4 +353,5 @@ public class IntegrationTest {
             public abstract void callback(Session session);
         }
     }
+
 }

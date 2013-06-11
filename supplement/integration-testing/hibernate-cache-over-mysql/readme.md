@@ -17,7 +17,7 @@ The other way is to use [mysql-sandbox](http://mysqlsandbox.net/) as shown below
         --master_options='-c binlog_format=ROW' \
         --slave_options='-c binlog_format=ROW -c log-slave-updates=TRUE'
     cd ~/sandboxes/rsandbox_mysql-5_5_27
-    ./m -e 'create database rook_h4cs_test';
+    ./m -e 'create database rook_h4cs_test; create database rook_h4cs_sdb_test';
 
 Once both master and slave nodes are up, integration tests can be run with
 

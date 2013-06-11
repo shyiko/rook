@@ -46,8 +46,16 @@
         <context:property-placeholder location="classpath:master.properties"/>
     </beans>
 
+    <beans profile="master-sdb">
+        <context:property-placeholder location="classpath:master-sdb.properties"/>
+    </beans>
+
     <beans profile="slave">
         <context:property-placeholder location="classpath:slave.properties"/>
+    </beans>
+
+    <beans profile="slave-sdb">
+        <context:property-placeholder location="classpath:slave-sdb.properties"/>
     </beans>
 
 </beans>
