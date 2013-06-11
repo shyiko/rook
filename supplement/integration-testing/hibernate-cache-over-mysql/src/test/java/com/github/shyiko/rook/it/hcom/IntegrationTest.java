@@ -17,6 +17,7 @@ package com.github.shyiko.rook.it.hcom;
 
 import com.github.shyiko.rook.api.ReplicationListener;
 import com.github.shyiko.rook.api.ReplicationStream;
+import com.github.shyiko.rook.api.event.GroupOfReplicationEvents;
 import com.github.shyiko.rook.api.event.InsertRowReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.UpdateRowReplicationEvent;
@@ -263,6 +264,36 @@ public class IntegrationTest {
                 assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(), 0);
             }
         });
+    }
+
+    @Test
+    public void testReplicationEventsComeGroupedByStatement() throws Exception {
+        ExecutionContext masterContext = ExecutionContextHolder.get("master");
+        CountDownReplicationListener regCountDownReplicationListener = new CountDownReplicationListener(
+                GroupOfReplicationEvents.class, 1
+        ), countDownReplicationListener = new CountDownReplicationListener(
+                InsertRowReplicationEvent.class, 3
+        );
+        replicationStream.registerListener(regCountDownReplicationListener);
+        replicationStream.registerListener(countDownReplicationListener);
+        masterContext.execute(masterContext.new Callback() {
+
+            @Override
+            public void callback(Session session) {
+                session.persist(new RootEntity("Slytherin"));
+                session.persist(new RootEntity("Hufflepuff"));
+                session.persist(new RootEntity("Ravenclaw"));
+            }
+        });
+        masterContext.execute(masterContext.new Callback() {
+
+            @Override
+            public void callback(Session session) {
+                session.createQuery("update RootEntity set name = '~'").executeUpdate();
+            }
+        });
+        assertTrue(regCountDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+        assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
     }
 
     @AfterMethod(alwaysRun = true)
