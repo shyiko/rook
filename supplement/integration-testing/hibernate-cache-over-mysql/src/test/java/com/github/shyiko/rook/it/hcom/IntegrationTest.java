@@ -16,7 +16,6 @@
 package com.github.shyiko.rook.it.hcom;
 
 import com.github.shyiko.rook.api.ReplicationListener;
-import com.github.shyiko.rook.api.ReplicationStream;
 import com.github.shyiko.rook.api.event.GroupOfReplicationEvents;
 import com.github.shyiko.rook.api.event.InsertRowReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
@@ -25,6 +24,7 @@ import com.github.shyiko.rook.it.hcom.model.OneToManyEntity;
 import com.github.shyiko.rook.it.hcom.model.OneToOneEntity;
 import com.github.shyiko.rook.it.hcom.model.RootEntity;
 import com.github.shyiko.rook.source.mysql.MySQLReplicationStream;
+import com.github.shyiko.rook.source.mysql.ReplicationStreamPosition;
 import com.github.shyiko.rook.target.hibernate.cache.HibernateCacheSynchronizer;
 import com.github.shyiko.rook.target.hibernate.cache.QueryCacheSynchronizer;
 import com.github.shyiko.rook.target.hibernate.cache.SecondLevelCacheSynchronizer;
@@ -67,7 +67,7 @@ import static org.testng.Assert.assertTrue;
 public class IntegrationTest {
 
     private static final Logger logger = LoggerFactory.getLogger(IntegrationTest.class);
-    private ReplicationStream replicationStream;
+    private MySQLReplicationStream replicationStream;
 
     @BeforeClass
     public void setUp() throws Exception {
@@ -373,6 +373,32 @@ public class IntegrationTest {
         assertFalse(invalidStateReplicationListener.waitForCompletion(3, TimeUnit.SECONDS),
                 "Received more events than expected");
         assertTrue(validStateReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+    }
+
+    @Test
+    public void testStreamCanBeRewind() throws Exception {
+        ReplicationStreamPosition initialPosition = replicationStream.getPosition();
+        ExecutionContext masterContext = ExecutionContextHolder.get("master");
+        CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener(
+                InsertRowReplicationEvent.class, 1
+        );
+        replicationStream.registerListener(countDownReplicationListener);
+        masterContext.execute(masterContext.new Callback() {
+
+            @Override
+            public void callback(Session session) {
+                session.persist(new RootEntity("Slytherin"));
+            }
+        });
+        assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+        replicationStream.disconnect();
+        replicationStream.setPosition(initialPosition);
+        replicationStream.connect();
+        CountDownReplicationListener restoredReplicationListener = new CountDownReplicationListener(
+                InsertRowReplicationEvent.class, 1
+        );
+        replicationStream.registerListener(restoredReplicationListener);
+        assertTrue(restoredReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
     }
 
     @AfterMethod(alwaysRun = true)

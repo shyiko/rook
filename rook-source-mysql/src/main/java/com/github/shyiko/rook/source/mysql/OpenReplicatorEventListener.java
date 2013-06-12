@@ -68,9 +68,6 @@ public class OpenReplicatorEventListener implements BinlogEventListener {
 
     @Override
     public void onEvents(BinlogEventV4 event) {
-        if (logger.isTraceEnabled()) {
-            logger.trace("Received " + event);
-        }
         // todo: intercept create or alter table queries for table metadata reload
         if (event instanceof TableMapEvent) {
             TableMapEvent nativeEvent = (TableMapEvent) event;
