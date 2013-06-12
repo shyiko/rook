@@ -112,9 +112,9 @@ public class OpenReplicator {
 		}
 		
 		//
-		this.transport.disconnect();
 		this.binlogParser.stop(timeout, unit);
-	}
+        this.transport.disconnect();
+    }
 	
 	public void stopQuietly(long timeout, TimeUnit unit) {
 		try {
