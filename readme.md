@@ -1,4 +1,4 @@
-# rook <a href="http://travis-ci.org/shyiko/rook"><img src="https://secure.travis-ci.org/shyiko/rook.png" alt="Build Status" style="max-width:100%;"></a>
+# rook [![Build Status](https://travis-ci.org/shyiko/rook.png?branch=master)](https://travis-ci.org/shyiko/rook)
 
 Change Data Capture (CDC) toolkit for keeping system layers in sync with the database.
 
