@@ -55,6 +55,7 @@ public class MySQLReplicationStream implements ReplicationStream {
 
             @Override
             public void onEvents(BinlogEventV4 event) {
+                // todo: do something about schema changes
                 if (logger.isTraceEnabled()) {
                     logger.trace("Received " + event);
                 }
@@ -63,14 +64,14 @@ public class MySQLReplicationStream implements ReplicationStream {
                     ReplicationStreamPosition position = new ReplicationStreamPosition(
                             nativeEvent.getBinlogFileName().toString(), nativeEvent.getBinlogPosition());
                     if (ObjectUtils.notEqual(getPosition(), position)) {
-                        setPosition(position);
+                        updatePosition(position);
                         if (logger.isTraceEnabled()) {
                             logger.trace("Updated position to " + position);
                         }
                     }
                 } else {
                     delegatingEventListener.onEvents(event);
-                    setPosition(new ReplicationStreamPosition(
+                    updatePosition(new ReplicationStreamPosition(
                             getPosition().getBinLogFileName(), event.getHeader().getNextPosition()
                     ));
                 }
@@ -90,14 +91,26 @@ public class MySQLReplicationStream implements ReplicationStream {
     }
 
     public MySQLReplicationStream authenticateWith(String username, String password) {
+        if (connected()) {
+            throw new IllegalStateException(
+                    "Replication stream needs to be disconnected before authentication details can be changed");
+        }
         this.username = username;
         this.password = password;
         return this;
     }
 
     public MySQLReplicationStream setPosition(ReplicationStreamPosition position) {
-        this.position = position;
+        if (connected()) {
+            throw new IllegalStateException(
+                    "Replication stream needs to be disconnected before position can be changed");
+        }
+        updatePosition(position);
         return this;
+    }
+
+    private void updatePosition(ReplicationStreamPosition position) {
+        this.position = position;
     }
 
     public ReplicationStreamPosition getPosition() {
@@ -142,7 +155,7 @@ public class MySQLReplicationStream implements ReplicationStream {
                         if (!resultSet.next()) {
                             throw new ConnectionException("Binlog file/position information is missing");
                         }
-                        setPosition(position = new ReplicationStreamPosition(
+                        updatePosition(position = new ReplicationStreamPosition(
                                 resultSet.getString("File"), resultSet.getLong("Position")
                         ));
                         if (logger.isTraceEnabled()) {

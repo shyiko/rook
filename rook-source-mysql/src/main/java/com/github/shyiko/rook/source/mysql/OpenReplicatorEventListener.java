@@ -43,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * todo: non-blocking synchronization
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 public class OpenReplicatorEventListener implements BinlogEventListener {
@@ -68,7 +67,6 @@ public class OpenReplicatorEventListener implements BinlogEventListener {
 
     @Override
     public void onEvents(BinlogEventV4 event) {
-        // todo: intercept create or alter table queries for table metadata reload
         if (event instanceof TableMapEvent) {
             TableMapEvent nativeEvent = (TableMapEvent) event;
             tableMap.put(nativeEvent.getTableId(), nativeEvent);
