@@ -19,6 +19,11 @@ import com.github.shyiko.rook.api.ConnectionException;
 import com.github.shyiko.rook.api.ReplicationListener;
 import com.github.shyiko.rook.api.ReplicationStream;
 import com.google.code.or.OpenReplicator;
+import com.google.code.or.binlog.BinlogEventV4;
+import com.google.code.or.binlog.impl.event.RotateEvent;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -32,17 +37,31 @@ import java.util.concurrent.TimeUnit;
  */
 public class MySQLReplicationStream implements ReplicationStream {
 
+    private Logger logger = LoggerFactory.getLogger(getClass());
+
     private String hostname = "localhost";
     private int port = 3306;
     private String username;
     private String password;
-    private String binLogFileName;
-    private long binLogPosition;
+    private volatile String binLogFileName;
+    private volatile long binLogPosition;
     private OpenReplicator replicator;
 
     public MySQLReplicationStream() {
         replicator = new OpenReplicator();
-        replicator.setBinlogEventListener(new OpenReplicatorEventListener());
+        replicator.setBinlogEventListener(new OpenReplicatorEventListener() {
+
+            @Override
+            public void onEvents(BinlogEventV4 event) {
+                if (event instanceof RotateEvent) {
+                    RotateEvent nativeEvent = (RotateEvent) event;
+                    startFrom(nativeEvent.getBinlogFileName().toString(), nativeEvent.getBinlogPosition());
+                } else {
+                    binLogPosition = event.getHeader().getNextPosition();
+                    super.onEvents(event);
+                }
+            }
+        });
     }
 
     public MySQLReplicationStream(String hostname) {
@@ -63,9 +82,21 @@ public class MySQLReplicationStream implements ReplicationStream {
     }
 
     public MySQLReplicationStream startFrom(String binLogFileName, long binLogPosition) {
-        this.binLogFileName = binLogFileName;
-        this.binLogPosition = binLogPosition;
+        if (!StringUtils.equals(this.binLogFileName, binLogFileName) ||
+            this.binLogPosition != binLogPosition) {
+            this.binLogFileName = binLogFileName;
+            this.binLogPosition = binLogPosition;
+            if (logger.isTraceEnabled()) {
+                logger.trace("Updated binlog position to " + (binLogFileName == null ? "<undefined>" : binLogFileName) +
+                        "#" + binLogPosition);
+            }
+        }
         return this;
+    }
+
+    // todo(shyiko): getPosition()
+    public MySQLReplicationStream resetPosition() {
+        return startFrom(null, 0);
     }
 
     @Override
@@ -101,8 +132,7 @@ public class MySQLReplicationStream implements ReplicationStream {
                         if (!resultSet.next()) {
                             throw new ConnectionException("Binlog file/position information is missing");
                         }
-                        binLogFileName = resultSet.getString("File");
-                        binLogPosition = resultSet.getLong("Position");
+                        startFrom(resultSet.getString("File"), resultSet.getLong("Position"));
                     } finally {
                         statement.close();
                     }

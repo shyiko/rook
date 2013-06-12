@@ -58,6 +58,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
 /**
@@ -326,6 +327,52 @@ public class IntegrationTest {
             }
         });
         assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+    }
+
+    @Test
+    public void testStreamCanBeSuspendedAndResumed() throws Exception {
+        ExecutionContext masterContext = ExecutionContextHolder.get("master");
+        ExecutionContext slaveContext = ExecutionContextHolder.get("slave");
+        CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener(
+                InsertRowReplicationEvent.class, 1
+        );
+        replicationStream.registerListener(countDownReplicationListener);
+        masterContext.execute(masterContext.new Callback() {
+
+            @Override
+            public void callback(Session session) {
+                session.persist(new RootEntity("Slytherin"));
+            }
+        });
+        assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+        replicationStream.disconnect();
+        slaveContext.execute(slaveContext.new Callback() {
+
+            @Override
+            public void callback(Session session) {
+                session.createSQLQuery("flush logs").executeUpdate();
+            }
+        });
+        masterContext.execute(masterContext.new Callback() {
+
+            @Override
+            public void callback(Session session) {
+                session.persist(new RootEntity("Hufflepuff"));
+            }
+        });
+        // todo(shyiko): we can miss Hufflepuff here because of replication latency
+        CountDownReplicationListener invalidStateReplicationListener = new CountDownReplicationListener(
+                InsertRowReplicationEvent.class, 2
+        );
+        replicationStream.registerListener(invalidStateReplicationListener);
+        CountDownReplicationListener validStateReplicationListener = new CountDownReplicationListener(
+                InsertRowReplicationEvent.class, 1
+        );
+        replicationStream.registerListener(validStateReplicationListener);
+        replicationStream.connect();
+        assertFalse(invalidStateReplicationListener.waitForCompletion(3, TimeUnit.SECONDS),
+                "Received more events than expected");
+        assertTrue(validStateReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
     }
 
     @AfterMethod(alwaysRun = true)

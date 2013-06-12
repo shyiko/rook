@@ -22,6 +22,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * todo(shyiko): new CountDownReplicationListener().waitFor(eventClass, numberOfEvents, timeout) would be better
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 public class CountDownReplicationListener implements ReplicationListener {
