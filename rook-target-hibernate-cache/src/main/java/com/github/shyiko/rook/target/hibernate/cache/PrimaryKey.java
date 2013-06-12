@@ -22,7 +22,7 @@ import java.io.Serializable;
  */
 public class PrimaryKey {
 
-    private int[] positionWithinRow;
+    private final int[] positionWithinRow;
 
     public PrimaryKey(int[] positionWithinRow) {
         this.positionWithinRow = positionWithinRow;

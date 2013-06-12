@@ -36,8 +36,8 @@ import java.util.Map;
  */
 public class SynchronizationContext {
 
-    private String schema;
-    private SessionFactory sessionFactory;
+    private final String schema;
+    private final SessionFactory sessionFactory;
     private final Map<String, Collection<EvictionTarget>> targetsByTable =
             new HashMap<String, Collection<EvictionTarget>>();
 

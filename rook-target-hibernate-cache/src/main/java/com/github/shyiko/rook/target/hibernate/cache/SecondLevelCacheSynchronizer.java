@@ -31,9 +31,9 @@ import java.util.Collection;
  */
 public class SecondLevelCacheSynchronizer implements ReplicationListener {
 
-    private Logger logger = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private SynchronizationContext synchronizationContext;
+    private final SynchronizationContext synchronizationContext;
 
     public SecondLevelCacheSynchronizer(SynchronizationContext synchronizationContext) {
         if (!synchronizationContext.getSessionFactory().getSettings().isSecondLevelCacheEnabled()) {

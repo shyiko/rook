@@ -37,9 +37,10 @@ import java.util.Set;
 public class QueryCacheSynchronizer implements ReplicationListener {
 
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
-    private Logger logger = LoggerFactory.getLogger(getClass());
 
-    private SynchronizationContext synchronizationContext;
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private final SynchronizationContext synchronizationContext;
 
     public QueryCacheSynchronizer(SynchronizationContext synchronizationContext) {
         if (!synchronizationContext.getSessionFactory().getSettings().isQueryCacheEnabled()) {

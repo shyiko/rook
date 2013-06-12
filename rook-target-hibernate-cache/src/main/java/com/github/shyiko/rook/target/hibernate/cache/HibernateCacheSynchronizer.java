@@ -28,7 +28,7 @@ import java.util.List;
  */
 public class HibernateCacheSynchronizer implements ReplicationListener {
 
-    private List<ReplicationListener> listeners;
+    private final List<ReplicationListener> listeners;
 
     public HibernateCacheSynchronizer(Configuration configuration, SessionFactory sessionFactory) {
         listeners = new ArrayList<ReplicationListener>();

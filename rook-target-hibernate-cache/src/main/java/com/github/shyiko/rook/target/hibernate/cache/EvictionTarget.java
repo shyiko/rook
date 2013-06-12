@@ -18,7 +18,7 @@ package com.github.shyiko.rook.target.hibernate.cache;
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-class EvictionTarget {
+public class EvictionTarget {
 
     /**
      * className or role depending whether target is an entity or a collection
