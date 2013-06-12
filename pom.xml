@@ -104,7 +104,31 @@
                     </dependency>
                 </dependencies>
             </plugin>
+            <plugin>
+                <groupId>com.github.shyiko.usage-maven-plugin</groupId>
+                <artifactId>usage-maven-plugin</artifactId>
+                <version>1.0.0</version>
+                <configuration>
+                    <usage>
+                        # build everything (append "-DskipTests=true" if you wish to skip tests)
+                        mvn clean install
+
+                        # deploy snapshots into nexus
+                        mvn -Ddeploy=snapshot
+
+                        # sign release build and deploy into nexus
+                        mvn -Ddeploy=release
+                    </usage>
+                </configuration>
+            </plugin>
         </plugins>
+        <extensions>
+            <extension>
+                <groupId>com.github.shyiko.usage-maven-plugin</groupId>
+                <artifactId>usage-maven-plugin</artifactId>
+                <version>1.0.0</version>
+            </extension>
+        </extensions>
     </build>
 
     <profiles>
