@@ -18,14 +18,14 @@ package com.github.shyiko.rook.target.hibernate.cache;
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public class EvictionTarget {
+class EvictionTarget {
 
     /**
      * className or role depending whether target is an entity or a collection
      */
-    private String name;
-    private PrimaryKey primaryKey;
-    private boolean collection;
+    private final String name;
+    private final PrimaryKey primaryKey;
+    private final boolean collection;
 
     public EvictionTarget(String name, PrimaryKey primaryKey, boolean collection) {
         this.name = name;

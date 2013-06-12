@@ -38,7 +38,8 @@ public class SynchronizationContext {
 
     private String schema;
     private SessionFactory sessionFactory;
-    private Map<String, Collection<EvictionTarget>> targetsByTable = new HashMap<String, Collection<EvictionTarget>>();
+    private final Map<String, Collection<EvictionTarget>> targetsByTable =
+            new HashMap<String, Collection<EvictionTarget>>();
 
     public SynchronizationContext(Configuration configuration, SessionFactory sessionFactory) {
         this.schema = ((SessionFactoryImplementor) sessionFactory).getJdbcServices().
