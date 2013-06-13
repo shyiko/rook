@@ -15,7 +15,12 @@
  */
 package com.github.shyiko.rook.target.hibernate.cache.model;
 
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Table;
 import java.io.Serializable;
 
 /**
@@ -23,10 +28,10 @@ import java.io.Serializable;
  */
 @Entity
 @Table(name = "dummy_entity_2fpk")
-public class DummyEntityTwoFieldPK implements Serializable{
+public class DummyEntityTwoFieldPK implements Serializable {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column
     private Long id;
 
@@ -34,10 +39,9 @@ public class DummyEntityTwoFieldPK implements Serializable{
     private String name;
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column
     private Long id2;
-
 
     public Long getId() {
         return id;

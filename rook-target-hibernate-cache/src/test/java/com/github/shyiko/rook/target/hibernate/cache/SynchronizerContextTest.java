@@ -27,7 +27,11 @@ import org.springframework.test.context.testng.AbstractTransactionalTestNGSpring
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author <a href="mailto:ivan.zaytsev@webamg.com">Ivan Zaytsev</a>
@@ -60,39 +64,49 @@ public class SynchronizerContextTest extends AbstractTransactionalTestNGSpringCo
         SynchronizationContext synchronizationContext = new SynchronizationContext(
                 sessionFactoryBean.getConfiguration(), sessionFactory);
 
-        {
-            List<EvictionTarget> dummyEvictionTargets = new ArrayList<EvictionTarget>(synchronizationContext.
-                    getEvictionTargets("rook.dummy_entity"));
-            String[] allFieldsFofDummy = mapColumnValues(DummyEntity.class.getName(),
-                    new LinkedHashMap<String, String>() {{
+        List<EvictionTarget> dummyEvictionTargets = new ArrayList<EvictionTarget>(synchronizationContext.
+                getEvictionTargets("rook.dummy_entity"));
+        String[] allFieldsFofDummy = mapColumnValues(DummyEntity.class.getName(),
+                new LinkedHashMap<String, String>() {
+                    {
                         put("id", "id");
                         put("name", "name");
-                    }});
-            String[] keyFieldsFofDummy = mapColumnValues(DummyEntity.class.getName(),
-                    new LinkedHashMap<String, String>() {{
+                    }
+                });
+        String[] keyFieldsFofDummy = mapColumnValues(DummyEntity.class.getName(),
+                new LinkedHashMap<String, String>() {
+                    {
                         put("id", "id");
-                    }});
-            Assert.assertEquals(dummyEvictionTargets.get(0).getPrimaryKey().of(allFieldsFofDummy), keyFieldsFofDummy);
-        }
+                    }
+                });
+        Assert.assertEquals(dummyEvictionTargets.get(0).getPrimaryKey().of(allFieldsFofDummy), keyFieldsFofDummy);
+    }
 
-        {
-            List<EvictionTarget> dummyEvictionTargets = new ArrayList<EvictionTarget>(synchronizationContext.
-                    getEvictionTargets("rook.dummy_entity_2fpk"));
-            String[] allFieldsFofDummy2 = mapColumnValues(DummyEntityTwoFieldPK.class.getName(),
-                    new LinkedHashMap<String, String>() {{
+    @Test
+    public void testKeyMappingsForDummyTwoPk() throws Exception {
+        SynchronizationContext synchronizationContext = new SynchronizationContext(
+                sessionFactoryBean.getConfiguration(), sessionFactory);
+
+        List<EvictionTarget> dummyEvictionTargets = new ArrayList<EvictionTarget>(synchronizationContext.
+                getEvictionTargets("rook.dummy_entity_2fpk"));
+        String[] allFieldsFofDummy2 = mapColumnValues(DummyEntityTwoFieldPK.class.getName(),
+                new LinkedHashMap<String, String>() {
+                    {
                         put("id", "id");
                         put("id2", "id2");
                         put("name", "name");
-                    }});
+                    }
+                });
 
-            String[] keyFieldsFofDummy2 = mapColumnValues(DummyEntityTwoFieldPK.class.getName(),
-                    new LinkedHashMap<String, String>() {{
+        String[] keyFieldsFofDummy2 = mapColumnValues(DummyEntityTwoFieldPK.class.getName(),
+                new LinkedHashMap<String, String>() {
+                    {
                         put("id", "id");
                         put("id2", "id2");
-                    }});
+                    }
+                });
 
-            Assert.assertEquals(dummyEvictionTargets.get(0).getPrimaryKey().of(allFieldsFofDummy2), keyFieldsFofDummy2);
-        }
+        Assert.assertEquals(dummyEvictionTargets.get(0).getPrimaryKey().of(allFieldsFofDummy2), keyFieldsFofDummy2);
     }
 
 }
