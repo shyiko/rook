@@ -45,6 +45,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.net.URI;
 import java.util.ArrayList;
@@ -399,6 +400,58 @@ public class IntegrationTest {
         );
         replicationStream.registerListener(restoredReplicationListener);
         assertTrue(restoredReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+    }
+
+    @Test
+    public void testAutomaticFailover() throws Exception {
+        int reverseProxyPort = 33262;
+        ResourceBundle bundle = ResourceBundle.getBundle("slave");
+        String dsURL = bundle.getString("datasource.url");
+        URI uri = new URI("schema" + dsURL.substring(dsURL.indexOf("://")));
+        final TCPReverseProxy tcpReverseProxy = new TCPReverseProxy(reverseProxyPort, uri.getPort());
+        try {
+            bindInSeparateThread(tcpReverseProxy);
+            ExecutionContext masterContext = ExecutionContextHolder.get("master");
+            MySQLReplicationStream replicationStream = new MySQLReplicationStream("localhost", reverseProxyPort).
+                    authenticateWith(bundle.getString("datasource.username"), bundle.getString("datasource.password"));
+            try {
+                CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener(
+                        InsertRowReplicationEvent.class, 1
+                );
+                replicationStream.registerListener(countDownReplicationListener);
+                replicationStream.connect();
+                Thread.sleep(500); // giving replication stream a chance to start reading data from a socket
+                tcpReverseProxy.unbind();
+                masterContext.execute(masterContext.new Callback() {
+
+                    @Override
+                    public void callback(Session session) {
+                        session.persist(new RootEntity("Slytherin"));
+                    }
+                });
+                bindInSeparateThread(tcpReverseProxy);
+                assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+            } finally {
+                replicationStream.disconnect();
+            }
+        } finally {
+            tcpReverseProxy.unbind();
+        }
+    }
+
+    private void bindInSeparateThread(final TCPReverseProxy tcpReverseProxy) throws InterruptedException {
+        new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                try {
+                    tcpReverseProxy.bind();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+        tcpReverseProxy.await(3, TimeUnit.SECONDS);
     }
 
     @AfterMethod(alwaysRun = true)

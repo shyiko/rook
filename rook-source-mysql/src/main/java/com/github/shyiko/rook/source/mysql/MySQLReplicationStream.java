@@ -135,8 +135,8 @@ public class MySQLReplicationStream implements ReplicationStream {
         }
         ReplicationStreamPosition position = getPosition();
         try {
-            Connection connection = DriverManager.getConnection("jdbc:mysql://" + hostname + ":" + port,
-                username, password);
+            Connection connection = DriverManager.getConnection(
+                    "jdbc:mysql://" + hostname + ":" + port + "?autoReconnect=true", username, password);
             try {
                 Statement statement = connection.createStatement();
                 try {
