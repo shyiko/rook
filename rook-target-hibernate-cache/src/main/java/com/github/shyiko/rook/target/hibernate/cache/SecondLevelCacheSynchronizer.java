@@ -60,11 +60,7 @@ public class SecondLevelCacheSynchronizer implements ReplicationListener {
         String qualifiedName = event.getSchema().toLowerCase() + "." + event.getTable().toLowerCase();
         Collection<EvictionTarget> evictionTargets = synchronizationContext.getEvictionTargets(qualifiedName);
         for (EvictionTarget evictionTarget : evictionTargets) {
-            Serializable[] id = evictionTarget.getPrimaryKey().of(event.getValues());
-            if (id.length != 1) {
-                throw new UnsupportedOperationException(); // todo(shyiko): yet to implement
-            }
-            Serializable key = id[0];
+            Serializable key = evictionTarget.getPrimaryKey().getIdentifier(event.getValues());
             if (logger.isDebugEnabled()) {
                 logger.debug("Evicting " + evictionTarget.getName() + "#" + key);
             }

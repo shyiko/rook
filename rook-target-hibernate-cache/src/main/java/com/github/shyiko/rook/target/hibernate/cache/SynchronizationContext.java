@@ -18,10 +18,7 @@ package com.github.shyiko.rook.target.hibernate.cache;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.mapping.Column;
-import org.hibernate.mapping.KeyValue;
 import org.hibernate.mapping.PersistentClass;
-import org.hibernate.mapping.Selectable;
 import org.hibernate.mapping.Table;
 
 import java.util.Collection;
@@ -63,8 +60,7 @@ public class SynchronizationContext {
             PersistentClass persistentClass = iterator.next();
             Table table = persistentClass.getTable();
             String className = persistentClass.getClassName();
-            Map<String, Integer> columnIndexByName = asIndexMap(table);
-            PrimaryKey primaryKey = asPrimaryKey(persistentClass.getKey(), columnIndexByName);
+            PrimaryKey primaryKey = new PrimaryKey(persistentClass);
             evictionTargetsOf(table).add(new EvictionTarget(className, primaryKey, false));
         }
     }
@@ -76,8 +72,7 @@ public class SynchronizationContext {
             org.hibernate.mapping.Collection collection = iterator.next();
             Table table = collection.getCollectionTable();
             String role = collection.getRole();
-            Map<String, Integer> columnIndexByName = asIndexMap(table);
-            PrimaryKey primaryKey = asPrimaryKey(collection.getKey(), columnIndexByName);
+            PrimaryKey primaryKey = new PrimaryKey(collection);
             evictionTargetsOf(table).add(new EvictionTarget(role, primaryKey, true));
         }
     }
@@ -90,28 +85,4 @@ public class SynchronizationContext {
         }
         return evictionTargets;
     }
-
-    private Map<String, Integer> asIndexMap(Table table) {
-        Map<String, Integer> columnIndexByName = new HashMap<String, Integer>();
-        int index = 0;
-        for (@SuppressWarnings("unchecked") Iterator<Column> columnIterator = table.getColumnIterator();
-             columnIterator.hasNext(); ) {
-            Column column = columnIterator.next();
-            columnIndexByName.put(column.getName(), index++);
-        }
-        return columnIndexByName;
-    }
-
-    @SuppressWarnings("unchecked")
-    private PrimaryKey asPrimaryKey(KeyValue keyValue, Map<String, Integer> indexMap) {
-        int[] pkIndexes = new int[keyValue.getColumnSpan()];
-        int index = 0;
-        for (Iterator<Selectable> columnIterator = keyValue.getColumnIterator();
-             columnIterator.hasNext(); ) {
-            Column column = (Column) columnIterator.next(); // todo: what if it's Formula?
-            pkIndexes[index++] = indexMap.get(column.getName());
-        }
-        return new PrimaryKey(pkIndexes);
-    }
-
 }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd" name="ehcache.xml">
+
+    <defaultCache overflowToDisk="false" timeToIdleSeconds="0" maxElementsInMemory="1000" maxEntriesLocalHeap="1000"/>
+
+    <cache name="CORE_REGION"
+           eternal="true" overflowToDisk="false" timeToLiveSeconds="0" maxEntriesLocalHeap="1000"/>
+
+    <cache name="org.hibernate.cache.internal.StandardQueryCache"
+           eternal="true" overflowToDisk="false" timeToLiveSeconds="0" maxEntriesLocalHeap="1000"/>
+    <cache name="org.hibernate.cache.spi.UpdateTimestampsCache"
+           eternal="true" overflowToDisk="false" maxEntriesLocalHeap="1000"/>
+
+</ehcache>

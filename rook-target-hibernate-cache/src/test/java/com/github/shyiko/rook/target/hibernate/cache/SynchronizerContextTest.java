@@ -17,6 +17,7 @@ package com.github.shyiko.rook.target.hibernate.cache;
 
 import com.github.shyiko.rook.target.hibernate.cache.model.DummyEntity;
 import com.github.shyiko.rook.target.hibernate.cache.model.DummyEntityTwoFieldPK;
+import org.apache.commons.lang.builder.EqualsBuilder;
 import org.hibernate.SessionFactory;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Table;
@@ -27,6 +28,7 @@ import org.springframework.test.context.testng.AbstractTransactionalTestNGSpring
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -46,9 +48,9 @@ public class SynchronizerContextTest extends AbstractTransactionalTestNGSpringCo
     @Autowired
     private LocalSessionFactoryBean sessionFactoryBean;
 
-    private String[] mapColumnValues(String entityName, Map<String, String> columnValuesByName) {
+    private Serializable[] mapColumnValues(String entityName, Map<String, Serializable> columnValuesByName) {
         Table table = sessionFactoryBean.getConfiguration().getClassMapping(entityName).getTable();
-        List<String> result = new ArrayList<String>();
+        List<Serializable> result = new ArrayList<Serializable>();
         for (@SuppressWarnings("unchecked") Iterator<Column> iterator = table.getColumnIterator();
              iterator.hasNext(); ) {
             Column column = iterator.next();
@@ -56,7 +58,7 @@ public class SynchronizerContextTest extends AbstractTransactionalTestNGSpringCo
                 result.add(columnValuesByName.get(column.getName()));
             }
         }
-        return result.toArray(new String[result.size()]);
+        return result.toArray(new Serializable[result.size()]);
     }
 
     @Test
@@ -66,20 +68,21 @@ public class SynchronizerContextTest extends AbstractTransactionalTestNGSpringCo
 
         List<EvictionTarget> dummyEvictionTargets = new ArrayList<EvictionTarget>(synchronizationContext.
                 getEvictionTargets("rook.dummy_entity"));
-        String[] allFieldsFofDummy = mapColumnValues(DummyEntity.class.getName(),
-                new LinkedHashMap<String, String>() {
+        Serializable[] allFieldsFofDummy = mapColumnValues(DummyEntity.class.getName(),
+                new LinkedHashMap<String, Serializable>() {
                     {
-                        put("id", "id");
+                        put("id", 1L);
                         put("name", "name");
                     }
                 });
-        String[] keyFieldsFofDummy = mapColumnValues(DummyEntity.class.getName(),
-                new LinkedHashMap<String, String>() {
+        Serializable[] keyFieldsFofDummy = mapColumnValues(DummyEntity.class.getName(),
+                new LinkedHashMap<String, Serializable>() {
                     {
-                        put("id", "id");
+                        put("id", 1L);
                     }
                 });
-        Assert.assertEquals(dummyEvictionTargets.get(0).getPrimaryKey().of(allFieldsFofDummy), keyFieldsFofDummy);
+        Assert.assertEquals(dummyEvictionTargets.get(0).getPrimaryKey().getIdentifier(allFieldsFofDummy),
+                keyFieldsFofDummy[0]);
     }
 
     @Test
@@ -89,24 +92,21 @@ public class SynchronizerContextTest extends AbstractTransactionalTestNGSpringCo
 
         List<EvictionTarget> dummyEvictionTargets = new ArrayList<EvictionTarget>(synchronizationContext.
                 getEvictionTargets("rook.dummy_entity_2fpk"));
-        String[] allFieldsFofDummy2 = mapColumnValues(DummyEntityTwoFieldPK.class.getName(),
-                new LinkedHashMap<String, String>() {
+        Serializable[] allFieldsFofDummy2 = mapColumnValues(DummyEntityTwoFieldPK.class.getName(),
+                new LinkedHashMap<String, Serializable>() {
                     {
-                        put("id", "id");
-                        put("id2", "id2");
+                        put("id", 1L);
+                        put("id2", 2L);
                         put("name", "name");
                     }
                 });
 
-        String[] keyFieldsFofDummy2 = mapColumnValues(DummyEntityTwoFieldPK.class.getName(),
-                new LinkedHashMap<String, String>() {
-                    {
-                        put("id", "id");
-                        put("id2", "id2");
-                    }
-                });
+        DummyEntityTwoFieldPK etaKey = new DummyEntityTwoFieldPK();
+        etaKey.setId(1L);
+        etaKey.setId2(2L);
 
-        Assert.assertEquals(dummyEvictionTargets.get(0).getPrimaryKey().of(allFieldsFofDummy2), keyFieldsFofDummy2);
+        Assert.assertTrue(EqualsBuilder.reflectionEquals(
+                dummyEvictionTargets.get(0).getPrimaryKey().getIdentifier(allFieldsFofDummy2), etaKey));
     }
 
 }

@@ -15,24 +15,99 @@
  */
 package com.github.shyiko.rook.target.hibernate.cache;
 
+import org.hibernate.mapping.Collection;
+import org.hibernate.mapping.Column;
+import org.hibernate.mapping.KeyValue;
+import org.hibernate.mapping.PersistentClass;
+import org.hibernate.mapping.Selectable;
+import org.hibernate.mapping.Table;
+
 import java.io.Serializable;
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 public class PrimaryKey {
 
-    private final int[] positionWithinRow;
+    private Class entityClass = null;
+    private final KeyColumn[] positionWithinRow;
 
-    public PrimaryKey(int[] positionWithinRow) {
-        this.positionWithinRow = positionWithinRow;
+    private Map<String, Integer> asIndexMap(Table table) {
+        Map<String, Integer> columnIndexByName = new HashMap<String, Integer>();
+        int index = 0;
+        for (@SuppressWarnings("unchecked") Iterator<Column> columnIterator = table.getColumnIterator();
+             columnIterator.hasNext(); ) {
+            Column column = columnIterator.next();
+            columnIndexByName.put(column.getName(), index++);
+        }
+        return columnIndexByName;
     }
 
-    public Serializable[] of(Serializable[] row) {
-        Serializable[] result = new Serializable[positionWithinRow.length];
-        for (int index = positionWithinRow.length - 1; index > -1; index--) {
-            result[index] = row[positionWithinRow[index]];
+    public PrimaryKey(Collection collection) {
+        this(collection.getKey(), collection.getTable());
+    }
+
+    public PrimaryKey(PersistentClass persistentClass) {
+        this(persistentClass.getKey(), persistentClass.getTable());
+        entityClass = persistentClass.getMappedClass();
+    }
+
+    private PrimaryKey(KeyValue keyValue, Table table) {
+        Map<String, Integer> indexMap = asIndexMap(table);
+        KeyColumn[] pkIndexes = new KeyColumn[keyValue.getColumnSpan()];
+        int index = 0;
+        for (@SuppressWarnings("unchecked") Iterator<Selectable> columnIterator = keyValue.getColumnIterator();
+             columnIterator.hasNext(); ) {
+            Column column = (Column) columnIterator.next(); // todo: what if it's Formula?
+            pkIndexes[index++] =
+                    new KeyColumn(column.getName(), indexMap.get(column.getName()));
         }
-        return result;
+        this.positionWithinRow = pkIndexes;
+    }
+
+    /**
+     * Get identifier for given row values
+     *
+     * @param row values
+     * @return Serializable key
+     */
+    public Serializable getIdentifier(Serializable[] row) {
+        if (positionWithinRow.length == 1) {
+            return row[positionWithinRow[0].index];
+        } else if (positionWithinRow.length > 1) {
+            if (entityClass == null) {
+                throw new IllegalStateException("Entity class is undefined! Cannot create key.");
+            }
+            try {
+                Serializable key = (Serializable) entityClass.newInstance();
+                for (KeyColumn keyColumn : positionWithinRow) {
+                    Field field = entityClass.getDeclaredField(keyColumn.name);
+                    field.setAccessible(true);
+                    field.set(key, row[keyColumn.index]);
+                }
+                return key;
+            } catch (Throwable e) {
+                throw new IllegalStateException("Cannot instantiate entity key", e);
+            }
+        } else {
+            throw new IllegalStateException("There are zero key columns in given key");
+        }
+    }
+
+    /**
+     * Class that contains single key column data
+     */
+    private static final class KeyColumn {
+        private final String name;
+        private final int index;
+
+        private KeyColumn(String name, int index) {
+            this.name = name;
+            this.index = index;
+        }
     }
 }
