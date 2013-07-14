@@ -21,7 +21,7 @@ package com.github.shyiko.rook.api;
 public interface ReplicationStream {
 
     void connect() throws ConnectionException;
-    boolean connected();
+    boolean isConnected();
     ReplicationStream registerListener(ReplicationListener listener);
     void unregisterListener(Class<? extends ReplicationListener> listenerClass);
     void disconnect() throws ConnectionException;

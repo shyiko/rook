@@ -20,6 +20,9 @@ import com.github.shyiko.rook.target.hibernate.cache.model.DummyEntityTwoFieldPK
 import org.hibernate.Cache;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.mapping.Column;
+import org.hibernate.mapping.Table;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.orm.hibernate4.HibernateTransactionManager;
 import org.springframework.orm.hibernate4.LocalSessionFactoryBean;
@@ -32,13 +35,16 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import static org.testng.Assert.assertFalse;
 
 /**
  * @author <a href="mailto:ivan.zaytsev@webamg.com">Ivan Zaytsev</a>
- *         2013-06-27
  */
 @ContextConfiguration(locations = {
         "classpath:hibernate-ehcache-spring-test-context.xml"
@@ -63,7 +69,7 @@ public class SecondLevelSynchronizerEvictionTest extends AbstractTestNGSpringCon
 
         secondLevelCacheSynchronizer = new SecondLevelCacheSynchronizer(synchronizationContext);
 
-        values = TestHelper.mapColumnValues(sessionFactoryBean.getConfiguration(),
+        values = mapColumnValues(sessionFactoryBean.getConfiguration(),
                 DummyEntityTwoFieldPK.class.getName(), new HashMap<String, Serializable>() {
             {
                 put("id", 1L);
@@ -74,6 +80,20 @@ public class SecondLevelSynchronizerEvictionTest extends AbstractTestNGSpringCon
         cache = synchronizationContext.getSessionFactory().getCache();
 
         identifier = new Serializable[1];
+    }
+
+    private Serializable[] mapColumnValues(Configuration configuration, String entityName,
+            Map<String, Serializable> columnValuesByName) {
+        Table table = configuration.getClassMapping(entityName).getTable();
+        List<Serializable> result = new ArrayList<Serializable>();
+        for (@SuppressWarnings("unchecked") Iterator<Column> iterator = table.getColumnIterator();
+             iterator.hasNext(); ) {
+            Column column = iterator.next();
+            if (columnValuesByName.containsKey(column.getName())) {
+                result.add(columnValuesByName.get(column.getName()));
+            }
+        }
+        return result.toArray(new Serializable[result.size()]);
     }
 
     @Test

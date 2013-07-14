@@ -15,22 +15,30 @@
  */
 package com.github.shyiko.rook.source.mysql;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
+import com.github.shyiko.mysql.binlog.event.DeleteRowsEventData;
+import com.github.shyiko.mysql.binlog.event.Event;
+import com.github.shyiko.mysql.binlog.event.TableMapEventData;
+import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
+import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.github.shyiko.rook.api.ConnectionException;
 import com.github.shyiko.rook.api.ReplicationListener;
 import com.github.shyiko.rook.api.ReplicationStream;
-import com.google.code.or.OpenReplicator;
-import com.google.code.or.binlog.BinlogEventListener;
-import com.google.code.or.binlog.BinlogEventV4;
-import com.google.code.or.binlog.impl.event.RotateEvent;
-import org.apache.commons.lang.ObjectUtils;
+import com.github.shyiko.rook.api.event.DeleteRowReplicationEvent;
+import com.github.shyiko.rook.api.event.GroupOfReplicationEvents;
+import com.github.shyiko.rook.api.event.InsertRowReplicationEvent;
+import com.github.shyiko.rook.api.event.ReplicationEvent;
+import com.github.shyiko.rook.api.event.UpdateRowReplicationEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -44,39 +52,13 @@ public class MySQLReplicationStream implements ReplicationStream {
     private int port = 3306;
     private String username;
     private String password;
-    private volatile ReplicationStreamPosition position;
-    private OpenReplicator replicator;
-    private OpenReplicatorEventListener delegatingEventListener;
+
+    private BinaryLogClient binaryLogClient;
+
+    private final List<ReplicationListener> listeners = new LinkedList<ReplicationListener>();
+    private final Map<Long, TableMapEventData> tablesById = new HashMap<Long, TableMapEventData>();
 
     public MySQLReplicationStream() {
-        delegatingEventListener = new OpenReplicatorEventListener();
-        replicator = new OpenReplicator();
-        replicator.setBinlogEventListener(new BinlogEventListener() {
-
-            @Override
-            public void onEvents(BinlogEventV4 event) {
-                // todo: do something about schema changes
-                if (logger.isTraceEnabled()) {
-                    logger.trace("Received " + event);
-                }
-                if (event instanceof RotateEvent) {
-                    RotateEvent nativeEvent = (RotateEvent) event;
-                    ReplicationStreamPosition position = new ReplicationStreamPosition(
-                            nativeEvent.getBinlogFileName().toString(), nativeEvent.getBinlogPosition());
-                    if (ObjectUtils.notEqual(getPosition(), position)) {
-                        updatePosition(position);
-                        if (logger.isTraceEnabled()) {
-                            logger.trace("Updated position to " + position);
-                        }
-                    }
-                } else {
-                    delegatingEventListener.onEvents(event);
-                    updatePosition(new ReplicationStreamPosition(
-                            getPosition().getBinLogFileName(), event.getHeader().getNextPosition()
-                    ));
-                }
-            }
-        });
     }
 
     public MySQLReplicationStream(String hostname) {
@@ -91,7 +73,7 @@ public class MySQLReplicationStream implements ReplicationStream {
     }
 
     public MySQLReplicationStream authenticateWith(String username, String password) {
-        if (connected()) {
+        if (isConnected()) {
             throw new IllegalStateException(
                     "Replication stream needs to be disconnected before authentication details can be changed");
         }
@@ -100,107 +82,142 @@ public class MySQLReplicationStream implements ReplicationStream {
         return this;
     }
 
-    public MySQLReplicationStream setPosition(ReplicationStreamPosition position) {
-        if (connected()) {
-            throw new IllegalStateException(
-                    "Replication stream needs to be disconnected before position can be changed");
-        }
-        updatePosition(position);
-        return this;
-    }
-
-    private void updatePosition(ReplicationStreamPosition position) {
-        this.position = position;
-    }
-
-    public ReplicationStreamPosition getPosition() {
-        return this.position;
-    }
-
-    public MySQLReplicationStream resetPosition() {
-        return setPosition(null);
-    }
-
     @Override
     public void connect() throws ConnectionException {
-        replicator.setHost(hostname);
-        replicator.setPort(port);
-        replicator.setUser(username);
-        replicator.setPassword(password);
-        try {
-            Class.forName("com.mysql.jdbc.Driver");
-        } catch (ClassNotFoundException e) {
-            throw new IllegalStateException("MySQL driver seems to be missing. " +
-                "Please make sure mysql-connector-java is on the classpath");
+        if (binaryLogClient != null) {
+            throw new IllegalStateException();
         }
-        ReplicationStreamPosition position = getPosition();
+        binaryLogClient = new BinaryLogClient(hostname, port, username, password);
+        binaryLogClient.registerEventListener(new DelegatingEventListener());
         try {
-            Connection connection = DriverManager.getConnection(
-                    "jdbc:mysql://" + hostname + ":" + port + "?autoReconnect=true", username, password);
-            try {
-                Statement statement = connection.createStatement();
-                try {
-                    ResultSet resultSet = statement.executeQuery("show variables like 'server_id';");
-                    if (!resultSet.next()) {
-                        throw new ConnectionException("'server_id' is missing");
-                    }
-                    replicator.setServerId(resultSet.getInt("Value"));
-                } finally {
-                    statement.close();
-                }
-                if (position == null) {
-                    statement = connection.createStatement();
-                    try {
-                        ResultSet resultSet = statement.executeQuery("show master status;");
-                        if (!resultSet.next()) {
-                            throw new ConnectionException("Binlog file/position information is missing");
-                        }
-                        updatePosition(position = new ReplicationStreamPosition(
-                                resultSet.getString("File"), resultSet.getLong("Position")
-                        ));
-                        if (logger.isTraceEnabled()) {
-                            logger.trace("Updated position to " + position);
-                        }
-                    } finally {
-                        statement.close();
-                    }
-                }
-            } finally {
-                connection.close();
-            }
-        } catch (SQLException e) {
-            throw new ConnectionException("Failed to retrieve MySQL node information", e);
-        }
-        replicator.setBinlogFileName(position.getBinLogFileName());
-        replicator.setBinlogPosition(position.getBinLogPosition());
-        try {
-            replicator.start();
+            binaryLogClient.connect(3, TimeUnit.SECONDS);
         } catch (Exception e) {
             throw new ConnectionException("Failed to establish connection to the replication stream", e);
         }
     }
 
     @Override
-    public boolean connected() {
-        return replicator.isRunning();
+    public boolean isConnected() {
+        return binaryLogClient != null && binaryLogClient.isConnected();
     }
 
     @Override
     public MySQLReplicationStream registerListener(ReplicationListener listener) {
-        delegatingEventListener.addListener(listener);
+        synchronized (listeners) {
+            listeners.add(listener);
+        }
         return this;
     }
 
     public void unregisterListener(Class<? extends ReplicationListener> listenerClass) {
-        delegatingEventListener.removeListener(listenerClass);
+        synchronized (listeners) {
+            Iterator<ReplicationListener> iterator = listeners.iterator();
+            while (iterator.hasNext()) {
+                ReplicationListener replicationListener = iterator.next();
+                if (listenerClass.isInstance(replicationListener)) {
+                    iterator.remove();
+                }
+            }
+        }
     }
 
     @Override
     public void disconnect() throws ConnectionException {
-        try {
-            replicator.stop(3, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            throw new ConnectionException("Failed to disconnect from replication stream", e);
+        if (binaryLogClient != null) {
+            try {
+                binaryLogClient.disconnect();
+                binaryLogClient = null;
+            } catch (Exception e) {
+                throw new ConnectionException("Failed to disconnect from the replication stream", e);
+            }
         }
+    }
+
+    private void notifyListeners(List<ReplicationEvent> events) {
+        int numberOfEvents = events.size();
+        if (numberOfEvents != 0) {
+            notifyListeners(numberOfEvents == 1 ? events.get(0) :
+                    new GroupOfReplicationEvents(events));
+        }
+    }
+
+    private void notifyListeners(ReplicationEvent event) {
+        synchronized (listeners) {
+            for (ReplicationListener listener : listeners) {
+                try {
+                    listener.onEvent(event);
+                } catch (Exception e) {
+                    if (logger.isWarnEnabled()) {
+                        logger.warn(listener + " choked on " + event, e);
+                    }
+                }
+            }
+        }
+    }
+
+    private final class DelegatingEventListener implements BinaryLogClient.EventListener {
+
+        @Override
+        public void onEvent(Event event) {
+            // todo: do something about schema changes
+            switch (event.getHeader().getEventType()) {
+                case TABLE_MAP:
+                    TableMapEventData tableMapEventData = event.getData();
+                    tablesById.put(tableMapEventData.getTableId(), tableMapEventData);
+                    break;
+                case PRE_GA_WRITE_ROWS:
+                case WRITE_ROWS:
+                case EXT_WRITE_ROWS:
+                    handleWriteRowsEvent(event);
+                    break;
+                case PRE_GA_UPDATE_ROWS:
+                case UPDATE_ROWS:
+                case EXT_UPDATE_ROWS:
+                    handleUpdateRowsEvent(event);
+                    break;
+                case PRE_GA_DELETE_ROWS:
+                case DELETE_ROWS:
+                case EXT_DELETE_ROWS:
+                    handleDeleteRowsEvent(event);
+                    break;
+            }
+        }
+
+        private void handleWriteRowsEvent(Event event) {
+            WriteRowsEventData eventData = event.getData();
+            TableMapEventData tableMapEvent = tablesById.get(eventData.getTableId());
+            List<Serializable[]> rows = eventData.getRows();
+            List<ReplicationEvent> replicationEvents = new ArrayList<ReplicationEvent>(rows.size());
+            for (Serializable[] row : rows) {
+                replicationEvents.add(new InsertRowReplicationEvent(tableMapEvent.getDatabase(),
+                        tableMapEvent.getTable(), row));
+            }
+            notifyListeners(replicationEvents);
+        }
+
+        private void handleUpdateRowsEvent(Event event) {
+            UpdateRowsEventData eventData = event.getData();
+            TableMapEventData tableMapEvent = tablesById.get(eventData.getTableId());
+            List<Map.Entry<Serializable[], Serializable[]>> rows = eventData.getRows();
+            List<ReplicationEvent> replicationEvents = new ArrayList<ReplicationEvent>(rows.size());
+            for (Map.Entry<Serializable[], Serializable[]> row : rows) {
+                replicationEvents.add(new UpdateRowReplicationEvent(tableMapEvent.getDatabase(),
+                        tableMapEvent.getTable(), row.getKey(), row.getValue()));
+            }
+            notifyListeners(replicationEvents);
+        }
+
+        private void handleDeleteRowsEvent(Event event) {
+            DeleteRowsEventData eventData = event.getData();
+            TableMapEventData tableMapEvent = tablesById.get(eventData.getTableId());
+            List<Serializable[]> rows = eventData.getRows();
+            List<ReplicationEvent> replicationEvents = new ArrayList<ReplicationEvent>(rows.size());
+            for (Serializable[] row : rows) {
+                replicationEvents.add(new DeleteRowReplicationEvent(tableMapEvent.getDatabase(),
+                        tableMapEvent.getTable(), row));
+            }
+            notifyListeners(replicationEvents);
+        }
+
     }
 }

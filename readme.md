@@ -4,8 +4,6 @@ Change Data Capture (CDC) toolkit for keeping system layers in sync with the dat
 
 Out-of-box rook includes support for MySQL as a source and Hibernate cache (query & 2nd level) as a target.
 
-Currently rook-source-mysql contains code of [open-replicator](https://code.google.com/p/open-replicator). This is going to be changed after v0.1.0 release.
-
 Examples
 ---------------
 
