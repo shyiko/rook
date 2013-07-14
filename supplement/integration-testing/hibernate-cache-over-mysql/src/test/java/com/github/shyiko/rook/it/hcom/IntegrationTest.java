@@ -24,7 +24,6 @@ import com.github.shyiko.rook.it.hcom.model.OneToManyEntity;
 import com.github.shyiko.rook.it.hcom.model.OneToOneEntity;
 import com.github.shyiko.rook.it.hcom.model.RootEntity;
 import com.github.shyiko.rook.source.mysql.MySQLReplicationStream;
-import com.github.shyiko.rook.source.mysql.ReplicationStreamPosition;
 import com.github.shyiko.rook.target.hibernate.cache.HibernateCacheSynchronizer;
 import com.github.shyiko.rook.target.hibernate.cache.QueryCacheSynchronizer;
 import com.github.shyiko.rook.target.hibernate.cache.SecondLevelCacheSynchronizer;
@@ -45,7 +44,6 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.net.URI;
 import java.util.ArrayList;
@@ -59,7 +57,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
 /**
@@ -296,162 +293,6 @@ public class IntegrationTest {
         });
         assertTrue(regCountDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
         assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
-    }
-
-    @Test
-    public void testFlushLogsIsAutomaticallyTakenCareOf() throws Exception {
-        ExecutionContext masterContext = ExecutionContextHolder.get("master");
-        ExecutionContext slaveContext = ExecutionContextHolder.get("slave");
-        CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener(
-                InsertRowReplicationEvent.class, 2
-        );
-        replicationStream.registerListener(countDownReplicationListener);
-        masterContext.execute(masterContext.new Callback() {
-
-            @Override
-            public void callback(Session session) {
-                session.persist(new RootEntity("Slytherin"));
-            }
-        });
-        slaveContext.execute(slaveContext.new Callback() {
-
-            @Override
-            public void callback(Session session) {
-                session.createSQLQuery("flush logs").executeUpdate();
-            }
-        });
-        masterContext.execute(masterContext.new Callback() {
-
-            @Override
-            public void callback(Session session) {
-                session.persist(new RootEntity("Hufflepuff"));
-            }
-        });
-        assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
-    }
-
-    @Test
-    public void testStreamCanBeSuspendedAndResumed() throws Exception {
-        ExecutionContext masterContext = ExecutionContextHolder.get("master");
-        ExecutionContext slaveContext = ExecutionContextHolder.get("slave");
-        CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener(
-                InsertRowReplicationEvent.class, 1
-        );
-        replicationStream.registerListener(countDownReplicationListener);
-        masterContext.execute(masterContext.new Callback() {
-
-            @Override
-            public void callback(Session session) {
-                session.persist(new RootEntity("Slytherin"));
-            }
-        });
-        assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
-        replicationStream.disconnect();
-        slaveContext.execute(slaveContext.new Callback() {
-
-            @Override
-            public void callback(Session session) {
-                session.createSQLQuery("flush logs").executeUpdate();
-            }
-        });
-        masterContext.execute(masterContext.new Callback() {
-
-            @Override
-            public void callback(Session session) {
-                session.persist(new RootEntity("Hufflepuff"));
-            }
-        });
-        // todo(shyiko): we can miss Hufflepuff here because of replication latency
-        CountDownReplicationListener invalidStateReplicationListener = new CountDownReplicationListener(
-                InsertRowReplicationEvent.class, 2
-        );
-        replicationStream.registerListener(invalidStateReplicationListener);
-        CountDownReplicationListener validStateReplicationListener = new CountDownReplicationListener(
-                InsertRowReplicationEvent.class, 1
-        );
-        replicationStream.registerListener(validStateReplicationListener);
-        replicationStream.connect();
-        assertFalse(invalidStateReplicationListener.waitForCompletion(3, TimeUnit.SECONDS),
-                "Received more events than expected");
-        assertTrue(validStateReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
-    }
-
-    @Test
-    public void testStreamCanBeRewind() throws Exception {
-        ReplicationStreamPosition initialPosition = replicationStream.getPosition();
-        ExecutionContext masterContext = ExecutionContextHolder.get("master");
-        CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener(
-                InsertRowReplicationEvent.class, 1
-        );
-        replicationStream.registerListener(countDownReplicationListener);
-        masterContext.execute(masterContext.new Callback() {
-
-            @Override
-            public void callback(Session session) {
-                session.persist(new RootEntity("Slytherin"));
-            }
-        });
-        assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
-        replicationStream.disconnect();
-        replicationStream.setPosition(initialPosition);
-        replicationStream.connect();
-        CountDownReplicationListener restoredReplicationListener = new CountDownReplicationListener(
-                InsertRowReplicationEvent.class, 1
-        );
-        replicationStream.registerListener(restoredReplicationListener);
-        assertTrue(restoredReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
-    }
-
-    @Test
-    public void testAutomaticFailover() throws Exception {
-        int reverseProxyPort = 33262;
-        ResourceBundle bundle = ResourceBundle.getBundle("slave");
-        String dsURL = bundle.getString("datasource.url");
-        URI uri = new URI("schema" + dsURL.substring(dsURL.indexOf("://")));
-        final TCPReverseProxy tcpReverseProxy = new TCPReverseProxy(reverseProxyPort, uri.getPort());
-        try {
-            bindInSeparateThread(tcpReverseProxy);
-            ExecutionContext masterContext = ExecutionContextHolder.get("master");
-            MySQLReplicationStream replicationStream = new MySQLReplicationStream("localhost", reverseProxyPort).
-                    authenticateWith(bundle.getString("datasource.username"), bundle.getString("datasource.password"));
-            try {
-                CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener(
-                        InsertRowReplicationEvent.class, 1
-                );
-                replicationStream.registerListener(countDownReplicationListener);
-                replicationStream.connect();
-                Thread.sleep(500); // giving replication stream a chance to start reading data from a socket
-                tcpReverseProxy.unbind();
-                masterContext.execute(masterContext.new Callback() {
-
-                    @Override
-                    public void callback(Session session) {
-                        session.persist(new RootEntity("Slytherin"));
-                    }
-                });
-                bindInSeparateThread(tcpReverseProxy);
-                assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
-            } finally {
-                replicationStream.disconnect();
-            }
-        } finally {
-            tcpReverseProxy.unbind();
-        }
-    }
-
-    private void bindInSeparateThread(final TCPReverseProxy tcpReverseProxy) throws InterruptedException {
-        new Thread(new Runnable() {
-
-            @Override
-            public void run() {
-                try {
-                    tcpReverseProxy.bind();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }).start();
-        tcpReverseProxy.await(3, TimeUnit.SECONDS);
     }
 
     @AfterMethod(alwaysRun = true)
