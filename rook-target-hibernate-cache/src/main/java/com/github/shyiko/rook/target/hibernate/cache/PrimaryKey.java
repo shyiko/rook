@@ -48,7 +48,7 @@ public class PrimaryKey {
     }
 
     public PrimaryKey(Collection collection) {
-        this(collection.getKey(), collection.getTable());
+        this(collection.getKey(), collection.getCollectionTable());
     }
 
     public PrimaryKey(PersistentClass persistentClass) {
