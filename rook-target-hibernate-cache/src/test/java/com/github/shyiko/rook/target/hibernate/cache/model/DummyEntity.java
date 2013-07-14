@@ -15,7 +15,11 @@
  */
 package com.github.shyiko.rook.target.hibernate.cache.model;
 
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Table;
 import java.io.Serializable;
 
 /**
@@ -23,7 +27,7 @@ import java.io.Serializable;
  */
 @Entity
 @Table(name = "dummy_entity")
-public class DummyEntity implements Serializable{
+public class DummyEntity implements Serializable {
 
     @Id
     @GeneratedValue

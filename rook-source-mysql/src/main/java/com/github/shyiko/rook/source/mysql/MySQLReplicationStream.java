@@ -180,6 +180,8 @@ public class MySQLReplicationStream implements ReplicationStream {
                 case EXT_DELETE_ROWS:
                     handleDeleteRowsEvent(event);
                     break;
+                default:
+                    // ignore
             }
         }
 

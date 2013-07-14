@@ -64,7 +64,7 @@ import static org.testng.Assert.assertTrue;
  */
 public class IntegrationTest {
 
-    private static final Logger logger = LoggerFactory.getLogger(IntegrationTest.class);
+    private final Logger logger = LoggerFactory.getLogger(IntegrationTest.class);
     private MySQLReplicationStream replicationStream;
 
     @BeforeClass
@@ -212,7 +212,7 @@ public class IntegrationTest {
     @Test
     public void testOnlyWiredInDatabaseIsAffected() throws Exception {
         class ReplicationContext {
-            ExecutionContext master, slave;
+            private ExecutionContext master, slave;
             ReplicationContext(ExecutionContext master, ExecutionContext slave) {
                 this.master = master; this.slave = slave;
             }
@@ -328,6 +328,8 @@ public class IntegrationTest {
     }
 
     private static final class ExecutionContext {
+
+        private final Logger logger = LoggerFactory.getLogger(ExecutionContext.class);
 
         private GenericXmlApplicationContext context;
         private String profile;
