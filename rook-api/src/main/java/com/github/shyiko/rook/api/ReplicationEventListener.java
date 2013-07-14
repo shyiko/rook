@@ -15,16 +15,12 @@
  */
 package com.github.shyiko.rook.api;
 
+import com.github.shyiko.rook.api.event.ReplicationEvent;
+
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public class ConnectionException extends Exception {
+public interface ReplicationEventListener {
 
-    public ConnectionException(String message) {
-        super(message);
-    }
-
-    public ConnectionException(String message, Throwable cause) {
-        super(message, cause);
-    }
+    void onEvent(ReplicationEvent event);
 }

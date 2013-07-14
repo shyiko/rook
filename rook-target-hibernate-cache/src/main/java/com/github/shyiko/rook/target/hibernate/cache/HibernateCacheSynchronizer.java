@@ -15,7 +15,7 @@
  */
 package com.github.shyiko.rook.target.hibernate.cache;
 
-import com.github.shyiko.rook.api.ReplicationListener;
+import com.github.shyiko.rook.api.ReplicationEventListener;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
@@ -26,12 +26,12 @@ import java.util.List;
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public class HibernateCacheSynchronizer implements ReplicationListener {
+public class HibernateCacheSynchronizer implements ReplicationEventListener {
 
-    private final List<ReplicationListener> listeners;
+    private final List<ReplicationEventListener> listeners;
 
     public HibernateCacheSynchronizer(Configuration configuration, SessionFactory sessionFactory) {
-        listeners = new ArrayList<ReplicationListener>();
+        listeners = new ArrayList<ReplicationEventListener>();
         SynchronizationContext synchronizationContext = new SynchronizationContext(configuration, sessionFactory);
         listeners.add(new SecondLevelCacheSynchronizer(synchronizationContext));
         if (synchronizationContext.getSessionFactory().getSettings().isQueryCacheEnabled()) {
@@ -41,7 +41,7 @@ public class HibernateCacheSynchronizer implements ReplicationListener {
 
     @Override
     public void onEvent(ReplicationEvent event) {
-        for (ReplicationListener listener : listeners) {
+        for (ReplicationEventListener listener : listeners) {
             listener.onEvent(event);
         }
     }

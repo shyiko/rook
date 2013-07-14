@@ -15,14 +15,17 @@
  */
 package com.github.shyiko.rook.api;
 
+import java.io.IOException;
+import java.util.concurrent.TimeoutException;
+
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 public interface ReplicationStream {
 
-    void connect() throws ConnectionException;
+    void connect() throws IOException, TimeoutException, InterruptedException;
     boolean isConnected();
-    ReplicationStream registerListener(ReplicationListener listener);
-    void unregisterListener(Class<? extends ReplicationListener> listenerClass);
-    void disconnect() throws ConnectionException;
+    ReplicationStream registerListener(ReplicationEventListener listener);
+    void unregisterListener(Class<? extends ReplicationEventListener> listenerClass);
+    void disconnect() throws IOException;
 }

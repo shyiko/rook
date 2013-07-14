@@ -15,8 +15,8 @@
  */
 package com.github.shyiko.rook.target.hibernate.cache;
 
-import com.github.shyiko.rook.api.ReplicationListener;
-import com.github.shyiko.rook.api.event.GroupOfReplicationEvents;
+import com.github.shyiko.rook.api.ReplicationEventListener;
+import com.github.shyiko.rook.api.event.CompositeReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.RowReplicationEvent;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -34,7 +34,7 @@ import java.util.Set;
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public class QueryCacheSynchronizer implements ReplicationListener {
+public class QueryCacheSynchronizer implements ReplicationEventListener {
 
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
@@ -53,8 +53,8 @@ public class QueryCacheSynchronizer implements ReplicationListener {
     @Override
     public void onEvent(ReplicationEvent event) {
         Collection<RowReplicationEvent> events = null;
-        if (event instanceof GroupOfReplicationEvents) {
-            Collection<ReplicationEvent> replicationEvents = ((GroupOfReplicationEvents) event).getEvents();
+        if (event instanceof CompositeReplicationEvent) {
+            Collection<ReplicationEvent> replicationEvents = ((CompositeReplicationEvent) event).getEvents();
             events = new ArrayList<RowReplicationEvent>(replicationEvents.size());
             for (ReplicationEvent replicationEvent : replicationEvents) {
                 if (replicationEvent instanceof RowReplicationEvent) {

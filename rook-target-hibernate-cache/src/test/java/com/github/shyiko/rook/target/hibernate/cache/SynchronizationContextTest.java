@@ -41,7 +41,7 @@ import java.util.Map;
 @ContextConfiguration(locations = {
         "classpath:hibernate-spring-test-context.xml"
 })
-public class SynchronizerContextTest extends AbstractTransactionalTestNGSpringContextTests {
+public class SynchronizationContextTest extends AbstractTransactionalTestNGSpringContextTests {
 
     @Autowired
     private SessionFactory sessionFactory;

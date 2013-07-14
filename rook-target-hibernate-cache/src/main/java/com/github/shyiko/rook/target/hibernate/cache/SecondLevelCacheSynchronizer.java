@@ -15,8 +15,8 @@
  */
 package com.github.shyiko.rook.target.hibernate.cache;
 
-import com.github.shyiko.rook.api.ReplicationListener;
-import com.github.shyiko.rook.api.event.GroupOfReplicationEvents;
+import com.github.shyiko.rook.api.ReplicationEventListener;
+import com.github.shyiko.rook.api.event.CompositeReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.RowReplicationEvent;
 import org.hibernate.Cache;
@@ -29,7 +29,7 @@ import java.util.Collection;
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public class SecondLevelCacheSynchronizer implements ReplicationListener {
+public class SecondLevelCacheSynchronizer implements ReplicationEventListener {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -45,8 +45,8 @@ public class SecondLevelCacheSynchronizer implements ReplicationListener {
 
     @Override
     public void onEvent(ReplicationEvent event) {
-        if (event instanceof GroupOfReplicationEvents) {
-            for (ReplicationEvent replicationEvent : ((GroupOfReplicationEvents) event).getEvents()) {
+        if (event instanceof CompositeReplicationEvent) {
+            for (ReplicationEvent replicationEvent : ((CompositeReplicationEvent) event).getEvents()) {
                 evict((RowReplicationEvent) replicationEvent);
             }
         } else

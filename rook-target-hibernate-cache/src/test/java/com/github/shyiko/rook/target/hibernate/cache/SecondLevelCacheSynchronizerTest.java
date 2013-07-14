@@ -49,7 +49,7 @@ import static org.testng.Assert.assertFalse;
 @ContextConfiguration(locations = {
         "classpath:hibernate-ehcache-spring-test-context.xml"
 })
-public class SecondLevelSynchronizerEvictionTest extends AbstractTestNGSpringContextTests {
+public class SecondLevelCacheSynchronizerTest extends AbstractTestNGSpringContextTests {
 
     @Autowired
     private SessionFactory sessionFactory;

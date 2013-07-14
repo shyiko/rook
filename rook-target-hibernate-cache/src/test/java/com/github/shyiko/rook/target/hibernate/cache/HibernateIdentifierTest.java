@@ -39,9 +39,19 @@ public class HibernateIdentifierTest extends AbstractTransactionalTestNGSpringCo
     private SessionFactory sessionFactory;
 
     @Test
-    public void testCacheSave() throws Exception {
+    public void testSimplePrimaryKey() throws Exception {
         Session session = sessionFactory.getCurrentSession();
+        DummyEntity entity = new DummyEntity();
+        entity.setId(1L);
+        entity.setName("name");
+        session.save(entity);
+        Serializable identifier = session.getIdentifier(entity);
+        Assert.assertEquals(identifier.getClass(), Long.class);
+    }
 
+    @Test
+    public void testCompositePrimaryKey() throws Exception {
+        Session session = sessionFactory.getCurrentSession();
         DummyEntityTwoFieldPK entity = new DummyEntityTwoFieldPK();
         entity.setId(1L);
         entity.setId2(2L);
@@ -54,17 +64,5 @@ public class HibernateIdentifierTest extends AbstractTransactionalTestNGSpringCo
         Assert.assertEquals(identifier.getClass(), DummyEntityTwoFieldPK.class);
         Object o = session.get(DummyEntityTwoFieldPK.class, dummyKey);
         Assert.assertNotNull(o);
-    }
-
-    @Test
-    public void testOnePK() throws Exception {
-        Session session = sessionFactory.getCurrentSession();
-
-        DummyEntity entity = new DummyEntity();
-        entity.setId(1L);
-        entity.setName("name");
-        session.save(entity);
-        Serializable identifier = session.getIdentifier(entity);
-        Assert.assertEquals(identifier.getClass(), Long.class);
     }
 }

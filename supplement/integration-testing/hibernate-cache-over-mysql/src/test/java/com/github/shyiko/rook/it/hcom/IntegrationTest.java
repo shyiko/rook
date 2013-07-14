@@ -15,8 +15,8 @@
  */
 package com.github.shyiko.rook.it.hcom;
 
-import com.github.shyiko.rook.api.ReplicationListener;
-import com.github.shyiko.rook.api.event.GroupOfReplicationEvents;
+import com.github.shyiko.rook.api.ReplicationEventListener;
+import com.github.shyiko.rook.api.event.CompositeReplicationEvent;
 import com.github.shyiko.rook.api.event.InsertRowReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.UpdateRowReplicationEvent;
@@ -79,7 +79,7 @@ public class IntegrationTest {
 
     @BeforeMethod
     public void beforeTest() {
-        replicationStream.registerListener(new ReplicationListener() {
+        replicationStream.registerListener(new ReplicationEventListener() {
 
             @Override
             public void onEvent(ReplicationEvent event) {
@@ -269,7 +269,7 @@ public class IntegrationTest {
     public void testReplicationEventsComeGroupedByStatement() throws Exception {
         ExecutionContext masterContext = ExecutionContextHolder.get("master");
         CountDownReplicationListener regCountDownReplicationListener = new CountDownReplicationListener(
-                GroupOfReplicationEvents.class, 1
+                CompositeReplicationEvent.class, 1
         ), countDownReplicationListener = new CountDownReplicationListener(
                 InsertRowReplicationEvent.class, 3
         );
@@ -297,7 +297,7 @@ public class IntegrationTest {
 
     @AfterMethod(alwaysRun = true)
     public void afterTest() throws Exception {
-        replicationStream.unregisterListener(ReplicationListener.class);
+        replicationStream.unregisterListener(ReplicationEventListener.class);
         for (ExecutionContext executionContext : ExecutionContextHolder.flush()) {
             executionContext.close();
         }

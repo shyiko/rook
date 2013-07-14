@@ -23,11 +23,11 @@ import java.util.Collection;
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public class GroupOfReplicationEvents implements ReplicationEvent {
+public class CompositeReplicationEvent implements ReplicationEvent {
 
     private Collection<ReplicationEvent> events;
 
-    public GroupOfReplicationEvents(Collection<ReplicationEvent> events) {
+    public CompositeReplicationEvent(Collection<ReplicationEvent> events) {
         this.events = events;
     }
 

@@ -21,17 +21,17 @@ import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
-import com.github.shyiko.rook.api.ConnectionException;
-import com.github.shyiko.rook.api.ReplicationListener;
+import com.github.shyiko.rook.api.ReplicationEventListener;
 import com.github.shyiko.rook.api.ReplicationStream;
+import com.github.shyiko.rook.api.event.CompositeReplicationEvent;
 import com.github.shyiko.rook.api.event.DeleteRowReplicationEvent;
-import com.github.shyiko.rook.api.event.GroupOfReplicationEvents;
 import com.github.shyiko.rook.api.event.InsertRowReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.UpdateRowReplicationEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,6 +40,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
@@ -55,7 +56,7 @@ public class MySQLReplicationStream implements ReplicationStream {
 
     private BinaryLogClient binaryLogClient;
 
-    private final List<ReplicationListener> listeners = new LinkedList<ReplicationListener>();
+    private final List<ReplicationEventListener> listeners = new LinkedList<ReplicationEventListener>();
     private final Map<Long, TableMapEventData> tablesById = new HashMap<Long, TableMapEventData>();
 
     public MySQLReplicationStream() {
@@ -83,17 +84,13 @@ public class MySQLReplicationStream implements ReplicationStream {
     }
 
     @Override
-    public void connect() throws ConnectionException {
+    public void connect() throws IOException, TimeoutException, InterruptedException {
         if (binaryLogClient != null) {
             throw new IllegalStateException();
         }
         binaryLogClient = new BinaryLogClient(hostname, port, username, password);
         binaryLogClient.registerEventListener(new DelegatingEventListener());
-        try {
-            binaryLogClient.connect(3, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            throw new ConnectionException("Failed to establish connection to the replication stream", e);
-        }
+        binaryLogClient.connect(3, TimeUnit.SECONDS);
     }
 
     @Override
@@ -102,18 +99,18 @@ public class MySQLReplicationStream implements ReplicationStream {
     }
 
     @Override
-    public MySQLReplicationStream registerListener(ReplicationListener listener) {
+    public MySQLReplicationStream registerListener(ReplicationEventListener listener) {
         synchronized (listeners) {
             listeners.add(listener);
         }
         return this;
     }
 
-    public void unregisterListener(Class<? extends ReplicationListener> listenerClass) {
+    public void unregisterListener(Class<? extends ReplicationEventListener> listenerClass) {
         synchronized (listeners) {
-            Iterator<ReplicationListener> iterator = listeners.iterator();
+            Iterator<ReplicationEventListener> iterator = listeners.iterator();
             while (iterator.hasNext()) {
-                ReplicationListener replicationListener = iterator.next();
+                ReplicationEventListener replicationListener = iterator.next();
                 if (listenerClass.isInstance(replicationListener)) {
                     iterator.remove();
                 }
@@ -122,14 +119,10 @@ public class MySQLReplicationStream implements ReplicationStream {
     }
 
     @Override
-    public void disconnect() throws ConnectionException {
+    public void disconnect() throws IOException {
         if (binaryLogClient != null) {
-            try {
-                binaryLogClient.disconnect();
-                binaryLogClient = null;
-            } catch (Exception e) {
-                throw new ConnectionException("Failed to disconnect from the replication stream", e);
-            }
+            binaryLogClient.disconnect();
+            binaryLogClient = null;
         }
     }
 
@@ -137,13 +130,13 @@ public class MySQLReplicationStream implements ReplicationStream {
         int numberOfEvents = events.size();
         if (numberOfEvents != 0) {
             notifyListeners(numberOfEvents == 1 ? events.get(0) :
-                    new GroupOfReplicationEvents(events));
+                    new CompositeReplicationEvent(events));
         }
     }
 
     private void notifyListeners(ReplicationEvent event) {
         synchronized (listeners) {
-            for (ReplicationListener listener : listeners) {
+            for (ReplicationEventListener listener : listeners) {
                 try {
                     listener.onEvent(event);
                 } catch (Exception e) {
