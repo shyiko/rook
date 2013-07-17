@@ -11,16 +11,9 @@
         <property name="connection.password"/>
         <property name="dialect">org.hibernate.dialect.H2Dialect</property>
         <property name="hbm2ddl.auto">create-drop</property>
-
-<!--
-        <property name="cache.region.factory_class">org.hibernate.cache.internal.NoCachingRegionFactory</property>
-        <property name="cache.use_query_cache">false</property>
-        <property name="cache.use_second_level_cache">false</property>
--->
         <property name="cache.region.factory_class">org.hibernate.cache.ehcache.EhCacheRegionFactory</property>
         <property name="cache.use_query_cache">true</property>
         <property name="cache.use_second_level_cache">true</property>
-
         <mapping class="com.github.shyiko.rook.target.hibernate.cache.model.Entity"/>
         <mapping class="com.github.shyiko.rook.target.hibernate.cache.model.EntityWithCompositeKey"/>
     </session-factory>

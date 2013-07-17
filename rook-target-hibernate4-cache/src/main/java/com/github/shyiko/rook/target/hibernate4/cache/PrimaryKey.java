@@ -50,24 +50,21 @@ public class PrimaryKey {
     }
 
     private PrimaryKey(KeyValue keyValue, Table table) {
-        Map<String, Integer> columnIndexByName = getColumnIndexByName(table);
+        Map<String, Integer> columnIndexByNameMap = getColumnIndexByNameMap(table);
         KeyColumn[] positionWithinRow = new KeyColumn[keyValue.getColumnSpan()];
         int index = 0;
         if (keyValue instanceof Component) {
-            Component component = (Component) keyValue;
-            Iterator propertyIterator = component.getPropertyIterator();
+            Iterator propertyIterator = ((Component) keyValue).getPropertyIterator();
             while (propertyIterator.hasNext()) {
                 Property property = (Property) propertyIterator.next();
-                Column column = (Column) property.getColumnIterator().next();
-                String columnName = column.getName();
-                positionWithinRow[index++] = new KeyColumn(property.getName(), columnIndexByName.get(columnName));
+                String columnName = ((Column) property.getColumnIterator().next()).getName();
+                positionWithinRow[index++] = new KeyColumn(property.getName(), columnIndexByNameMap.get(columnName));
             }
         } else {
             Iterator columnIterator = keyValue.getColumnIterator();
             while (columnIterator.hasNext()) {
-                Column column = (Column) columnIterator.next();
-                String columnName = column.getName();
-                positionWithinRow[index++] = new KeyColumn(columnName, columnIndexByName.get(columnName));
+                String columnName = ((Column) columnIterator.next()).getName();
+                positionWithinRow[index++] = new KeyColumn(columnName, columnIndexByNameMap.get(columnName));
             }
         }
         if (positionWithinRow.length == 0) {
@@ -76,13 +73,12 @@ public class PrimaryKey {
         this.positionWithinRow = positionWithinRow;
     }
 
-    private Map<String, Integer> getColumnIndexByName(Table table) {
+    private Map<String, Integer> getColumnIndexByNameMap(Table table) {
         Map<String, Integer> columnIndexByName = new HashMap<String, Integer>();
         int index = 0;
-        @SuppressWarnings("unchecked")
-        Iterator<Column> columnIterator = table.getColumnIterator();
+        Iterator columnIterator = table.getColumnIterator();
         while (columnIterator.hasNext()) {
-            Column column = columnIterator.next();
+            Column column = (Column) columnIterator.next();
             columnIndexByName.put(column.getName(), index++);
         }
         return columnIndexByName;

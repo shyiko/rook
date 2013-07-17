@@ -17,15 +17,8 @@ package com.github.shyiko.rook.target.hibernate.cache;
 
 import com.github.shyiko.rook.target.hibernate.cache.model.EntityWithCompositeKey;
 import com.github.shyiko.rook.target.hibernate4.cache.PrimaryKey;
-import com.github.shyiko.rook.target.hibernate4.cache.SynchronizationContext;
 import org.apache.commons.lang.builder.EqualsBuilder;
-import org.hibernate.SessionFactory;
-import org.hibernate.cfg.Configuration;
-import org.hibernate.service.ServiceRegistry;
-import org.hibernate.service.ServiceRegistryBuilder;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.Serializable;
@@ -33,18 +26,7 @@ import java.io.Serializable;
 /**
  * @author <a href="mailto:ivan.zaytsev@webamg.com">Ivan Zaytsev</a>
  */
-public class SynchronizationContextTest {
-
-    private SynchronizationContext synchronizationContext;
-
-    @BeforeClass
-    public void setUp() {
-        Configuration configuration = new Configuration().configure("hibernate.cfg.xml");
-        ServiceRegistry serviceRegistry = new ServiceRegistryBuilder().
-                applySettings(configuration.getProperties()).buildServiceRegistry();
-        SessionFactory sessionFactory = configuration.buildSessionFactory(serviceRegistry);
-        synchronizationContext = new SynchronizationContext(configuration, sessionFactory);
-    }
+public class SynchronizationContextTest extends AbstractHibernateTest {
 
     @Test
     public void testKeyMapping() throws Exception {
@@ -61,11 +43,6 @@ public class SynchronizationContextTest {
         EntityWithCompositeKey expectedKey = new EntityWithCompositeKey(1L, 2L);
         Assert.assertTrue(EqualsBuilder.reflectionEquals(
                 primaryKey.getIdentifier(new Serializable[]{2L, 1L, "name"}), expectedKey));
-    }
-
-    @AfterClass
-    public void tearDown() {
-        synchronizationContext.getSessionFactory().close();
     }
 
 }

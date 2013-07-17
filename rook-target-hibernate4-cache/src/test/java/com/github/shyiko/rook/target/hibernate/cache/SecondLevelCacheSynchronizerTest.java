@@ -18,19 +18,12 @@ package com.github.shyiko.rook.target.hibernate.cache;
 import com.github.shyiko.rook.api.event.DeleteRowReplicationEvent;
 import com.github.shyiko.rook.target.hibernate.cache.model.EntityWithCompositeKey;
 import com.github.shyiko.rook.target.hibernate4.cache.SecondLevelCacheSynchronizer;
-import com.github.shyiko.rook.target.hibernate4.cache.SynchronizationContext;
 import org.hibernate.Cache;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
-import org.hibernate.cfg.Configuration;
-import org.hibernate.service.ServiceRegistry;
-import org.hibernate.service.ServiceRegistryBuilder;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.Serializable;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
@@ -38,22 +31,7 @@ import static org.testng.Assert.assertTrue;
 /**
  * @author <a href="mailto:ivan.zaytsev@webamg.com">Ivan Zaytsev</a>
  */
-public class SecondLevelCacheSynchronizerTest {
-
-    private SynchronizationContext synchronizationContext;
-
-    @BeforeClass
-    public void setUp() {
-        Configuration configuration = new Configuration().configure("hibernate.cfg.xml");
-        configuration.setProperty("hibernate.cache.region.factory_class",
-                "org.hibernate.cache.ehcache.EhCacheRegionFactory");
-        configuration.setProperty("hibernate.cache.use_second_level_cache", "true");
-        configuration.setProperty("hibernate.cache.use_query_cache", "true");
-        ServiceRegistry serviceRegistry = new ServiceRegistryBuilder().
-                applySettings(configuration.getProperties()).buildServiceRegistry();
-        SessionFactory sessionFactory = configuration.buildSessionFactory(serviceRegistry);
-        synchronizationContext = new SynchronizationContext(configuration, sessionFactory);
-    }
+public class SecondLevelCacheSynchronizerTest extends AbstractHibernateTest {
 
     @Test
     public void testEvictionOfEntityWithCompositeKey() throws Exception {
@@ -101,11 +79,6 @@ public class SecondLevelCacheSynchronizerTest {
         } finally {
             session.close();
         }
-    }
-
-    @AfterClass
-    public void tearDown() {
-        synchronizationContext.getSessionFactory().close();
     }
 
     private interface Callback<T> {
