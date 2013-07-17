@@ -1,4 +1,4 @@
-# hibernate-cache-over-mysql
+# hibernate4-cache-over-mysql
 
 This module contains number of tests asserting Hibernate cache (query & 2nd level) eviction in response to the replication events.
 In order for tests to work two (or more) MySQL nodes need to be connected by means of row-based (master-slave) replication.
