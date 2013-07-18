@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+
+    <session-factory>
+        <property name="connection.driver_class">com.mysql.jdbc.Driver</property>
+        <property name="dialect">org.hibernate.dialect.MySQL5InnoDBDialect</property>
+        <property name="cache.region.factory_class">org.hibernate.cache.ehcache.EhCacheRegionFactory</property>
+        <property name="cache.use_query_cache">true</property>
+        <property name="cache.use_second_level_cache">true</property>
+        <mapping class="com.github.shyiko.rook.it.hcom.model.RootEntity"/>
+        <mapping class="com.github.shyiko.rook.it.hcom.model.OneToOneEntity"/>
+        <mapping class="com.github.shyiko.rook.it.hcom.model.OneToManyEntity"/>
+        <mapping class="com.github.shyiko.rook.it.hcom.model.JoinedOneToManyEntity"/>
+    </session-factory>
+
+</hibernate-configuration>

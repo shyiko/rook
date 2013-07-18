@@ -31,19 +31,18 @@ import com.github.shyiko.rook.target.hibernate4.cache.SynchronizationContext;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
+import org.hibernate.service.ServiceRegistry;
+import org.hibernate.service.ServiceRegistryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.support.GenericXmlApplicationContext;
-import org.springframework.orm.hibernate4.LocalSessionFactoryBean;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
 import java.net.URI;
 import java.util.ArrayList;
@@ -52,6 +51,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -70,10 +70,11 @@ public class IntegrationTest {
     @BeforeClass
     public void setUp() throws Exception {
         ResourceBundle bundle = ResourceBundle.getBundle("slave");
-        String dsURL = bundle.getString("datasource.url");
+        String dsURL = bundle.getString("hibernate.connection.url");
         URI uri = new URI("schema" + dsURL.substring(dsURL.indexOf("://")));
         replicationStream = new MySQLReplicationStream(uri.getHost(), uri.getPort()).
-            authenticateWith(bundle.getString("datasource.username"), bundle.getString("datasource.password"));
+            authenticateWith(bundle.getString("hibernate.connection.username"),
+                    bundle.getString("hibernate.connection.password"));
         replicationStream.connect();
     }
 
@@ -104,17 +105,15 @@ public class IntegrationTest {
         ExecutionContext masterContext = ExecutionContextHolder.get("master");
         ExecutionContext slaveContext = ExecutionContextHolder.get("slave");
         if (enableQCS) {
-            LocalSessionFactoryBean sessionFactoryBean = masterContext.getBean(LocalSessionFactoryBean.class);
-            Configuration configuration = sessionFactoryBean.getConfiguration();
             replicationStream.registerListener(
-                new QueryCacheSynchronizer(new SynchronizationContext(configuration,
-                        slaveContext.getBean(SessionFactory.class)))
+                new QueryCacheSynchronizer(new SynchronizationContext(slaveContext.getConfiguration(),
+                        slaveContext.getSessionFactory()))
             );
         }
-        slaveContext.execute(slaveContext.new Callback() {
+        slaveContext.execute(new Callback<Session>() {
 
             @Override
-            public void callback(Session session) {
+            public void execute(Session session) {
                 assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(), 0);
             }
         });
@@ -122,18 +121,18 @@ public class IntegrationTest {
             InsertRowReplicationEvent.class, 1
         );
         replicationStream.registerListener(countDownReplicationListener);
-        masterContext.execute(masterContext.new Callback() {
+        masterContext.execute(new Callback<Session>() {
 
             @Override
-            public void callback(Session session) {
+            public void execute(Session session) {
                 session.persist(new RootEntity("Slytherin"));
             }
         });
         assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
-        slaveContext.execute(slaveContext.new Callback() {
+        slaveContext.execute(new Callback<Session>() {
 
             @Override
-            public void callback(Session session) {
+            public void execute(Session session) {
                 assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(),
                     enableQCS ? 1 : 0);
             }
@@ -154,18 +153,16 @@ public class IntegrationTest {
         ExecutionContext masterContext = ExecutionContextHolder.get("master");
         ExecutionContext slaveContext = ExecutionContextHolder.get("slave");
         if (enableSLCS) {
-            LocalSessionFactoryBean sessionFactoryBean = masterContext.getBean(LocalSessionFactoryBean.class);
-            Configuration configuration = sessionFactoryBean.getConfiguration();
             replicationStream.registerListener(
-                new SecondLevelCacheSynchronizer(new SynchronizationContext(configuration,
-                        slaveContext.getBean(SessionFactory.class)))
+                new SecondLevelCacheSynchronizer(new SynchronizationContext(slaveContext.getConfiguration(),
+                        slaveContext.getSessionFactory()))
             );
         }
         final AtomicReference<Serializable> rootEntityId = new AtomicReference<Serializable>();
-        masterContext.execute(masterContext.new Callback() {
+        masterContext.execute(new Callback<Session>() {
 
             @Override
-            public void callback(Session session) {
+            public void execute(Session session) {
                 rootEntityId.set(session.save(new RootEntity(
                     "Slytherin",
                     new OneToOneEntity("Severus Snape"),
@@ -181,28 +178,28 @@ public class IntegrationTest {
             UpdateRowReplicationEvent.class, 1
         );
         replicationStream.registerListener(countDownReplicationListener);
-        slaveContext.execute(slaveContext.new Callback() {
+        slaveContext.execute(new Callback<Session>() {
 
             @Override
-            public void callback(Session session) {
+            public void execute(Session session) {
                 RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId.get());
                 assertEquals(rootEntity.getName(), "Slytherin");
             }
         });
-        masterContext.execute(masterContext.new Callback() {
+        masterContext.execute(new Callback<Session>() {
 
             @Override
-            public void callback(Session session) {
+            public void execute(Session session) {
                 RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId.get());
                 rootEntity.setName("Slytherin House");
                 session.merge(rootEntity);
             }
         });
         assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
-        slaveContext.execute(slaveContext.new Callback() {
+        slaveContext.execute(new Callback<Session>() {
 
             @Override
-            public void callback(Session session) {
+            public void execute(Session session) {
                 RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId.get());
                 assertEquals(rootEntity.getName(), enableSLCS ? "Slytherin House" : "Slytherin");
             }
@@ -223,14 +220,14 @@ public class IntegrationTest {
                 ExecutionContextHolder.get("master-sdb"), ExecutionContextHolder.get("slave-sdb")
             );
         replicationStream.registerListener(new HibernateCacheSynchronizer(
-                primaryContext.master.getBean(LocalSessionFactoryBean.class).getConfiguration(),
-                primaryContext.slave.getBean(SessionFactory.class)
+                primaryContext.slave.getConfiguration(),
+                primaryContext.slave.getSessionFactory()
         ));
         for (ReplicationContext context : new ReplicationContext[] {primaryContext, separateContext}) {
-            context.slave.execute(context.slave.new Callback() {
+            context.slave.execute(new Callback<Session>() {
 
                 @Override
-                public void callback(Session session) {
+                public void execute(Session session) {
                     assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(), 0);
                 }
             });
@@ -240,26 +237,26 @@ public class IntegrationTest {
         );
         replicationStream.registerListener(countDownReplicationListener);
         for (final ReplicationContext group : new ReplicationContext[] {primaryContext, separateContext}) {
-            group.master.execute(group.master.new Callback() {
+            group.master.execute(new Callback<Session>() {
 
                 @Override
-                public void callback(Session session) {
+                public void execute(Session session) {
                     session.save(new RootEntity("Slytherin"));
                 }
             });
         }
         assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
-        primaryContext.slave.execute(primaryContext.slave.new Callback() {
+        primaryContext.slave.execute(new Callback<Session>() {
 
             @Override
-            public void callback(Session session) {
+            public void execute(Session session) {
                 assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(), 1);
             }
         });
-        separateContext.slave.execute(separateContext.slave.new Callback() {
+        separateContext.slave.execute(new Callback<Session>() {
 
             @Override
-            public void callback(Session session) {
+            public void execute(Session session) {
                 assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(), 0);
             }
         });
@@ -275,19 +272,19 @@ public class IntegrationTest {
         );
         replicationStream.registerListener(regCountDownReplicationListener);
         replicationStream.registerListener(countDownReplicationListener);
-        masterContext.execute(masterContext.new Callback() {
+        masterContext.execute(new Callback<Session>() {
 
             @Override
-            public void callback(Session session) {
+            public void execute(Session session) {
                 session.persist(new RootEntity("Slytherin"));
                 session.persist(new RootEntity("Hufflepuff"));
                 session.persist(new RootEntity("Ravenclaw"));
             }
         });
-        masterContext.execute(masterContext.new Callback() {
+        masterContext.execute(new Callback<Session>() {
 
             @Override
-            public void callback(Session session) {
+            public void execute(Session session) {
                 session.createQuery("update RootEntity set name = '~'").executeUpdate();
             }
         });
@@ -331,59 +328,64 @@ public class IntegrationTest {
 
         private final Logger logger = LoggerFactory.getLogger(ExecutionContext.class);
 
-        private GenericXmlApplicationContext context;
+        private Configuration configuration;
+        private SessionFactory sessionFactory;
         private String profile;
 
         private ExecutionContext(String profile) {
-            context = new GenericXmlApplicationContext();
-            context.getEnvironment().setActiveProfiles(this.profile = profile);
-            context.load("classpath:spring-context.xml");
-            int numberOfRetries = 3,
-                timeoutBetweenRetriesInMs = 1000;
-            while (numberOfRetries-- > 0) {
-                try {
-                    context.refresh();
-                    break;
-                } catch (Exception e) {
-                    logger.warn("Failed to start " + profile + " context. " +
-                        (numberOfRetries == 0 ? "" : "Reattempt in " + timeoutBetweenRetriesInMs + "ms"));
-                    try {
-                        Thread.sleep(timeoutBetweenRetriesInMs);
-                    } catch (InterruptedException ie) {
-                        ie.printStackTrace();
-                    }
-                }
+            configuration = new Configuration().configure("hibernate.cfg.xml");
+            try {
+                configuration.addProperties(getProperties(profile));
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to load properties for " + profile + " profile");
+            }
+            ServiceRegistry serviceRegistry = new ServiceRegistryBuilder().
+                    applySettings(configuration.getProperties()).buildServiceRegistry();
+            sessionFactory = configuration.buildSessionFactory(serviceRegistry);
+            this.profile = profile;
+        }
+
+        private Properties getProperties(String profile) throws IOException {
+            InputStream inputStream = getClass().getResource("/" + profile + ".properties").openStream();
+            try {
+                Properties properties = new Properties();
+                properties.load(inputStream);
+                return properties;
+            } finally {
+                inputStream.close();
             }
         }
 
-        public void execute(final Callback callback) {
+        public Configuration getConfiguration() {
+            return configuration;
+        }
+
+        public SessionFactory getSessionFactory() {
+            return sessionFactory;
+        }
+
+        public void execute(Callback<Session> callback) {
             if (logger.isDebugEnabled()) {
                 logger.debug("Executing callback on " + profile);
             }
-            TransactionTemplate transactionTemplate = context.getBean(TransactionTemplate.class);
-            transactionTemplate.execute(new TransactionCallback<Object>() {
-
-                @Override
-                public Object doInTransaction(TransactionStatus status) {
-                    SessionFactory sessionFactory = context.getBean(SessionFactory.class);
-                    callback.callback(sessionFactory.getCurrentSession());
-                    return null;
-                }
-            });
-        }
-
-        public <T> T getBean(Class<T> cls) {
-            return context.getBean(cls);
+            Session session = sessionFactory.openSession();
+            try {
+                session.beginTransaction();
+                callback.execute(session);
+                session.getTransaction().commit();
+            } finally {
+                session.close();
+            }
         }
 
         public void close() {
-            context.close();
+            sessionFactory.close();
         }
+    }
 
-        public abstract class Callback {
+    private interface Callback<T> {
 
-            public abstract void callback(Session session);
-        }
+        void execute(T obj);
     }
 
 }
