@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.shyiko.rook.it.hcom;
+package com.github.shyiko.rook.it.h4com;
 
 import com.github.shyiko.rook.api.ReplicationEventListener;
 import com.github.shyiko.rook.api.event.ReplicationEvent;

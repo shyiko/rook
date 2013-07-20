@@ -10,10 +10,10 @@
         <property name="cache.region.factory_class">org.hibernate.cache.ehcache.EhCacheRegionFactory</property>
         <property name="cache.use_query_cache">true</property>
         <property name="cache.use_second_level_cache">true</property>
-        <mapping class="com.github.shyiko.rook.it.hcom.model.RootEntity"/>
-        <mapping class="com.github.shyiko.rook.it.hcom.model.OneToOneEntity"/>
-        <mapping class="com.github.shyiko.rook.it.hcom.model.OneToManyEntity"/>
-        <mapping class="com.github.shyiko.rook.it.hcom.model.JoinedOneToManyEntity"/>
+        <mapping class="com.github.shyiko.rook.it.h4com.model.RootEntity"/>
+        <mapping class="com.github.shyiko.rook.it.h4com.model.OneToOneEntity"/>
+        <mapping class="com.github.shyiko.rook.it.h4com.model.OneToManyEntity"/>
+        <mapping class="com.github.shyiko.rook.it.h4com.model.JoinedOneToManyEntity"/>
     </session-factory>
 
 </hibernate-configuration>

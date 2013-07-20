@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.shyiko.rook.it.hcom;
+package com.github.shyiko.rook.it.h4com;
 
 import com.github.shyiko.rook.api.ReplicationEventListener;
 import com.github.shyiko.rook.api.event.CompositeReplicationEvent;
 import com.github.shyiko.rook.api.event.InsertRowReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.UpdateRowReplicationEvent;
-import com.github.shyiko.rook.it.hcom.model.OneToManyEntity;
-import com.github.shyiko.rook.it.hcom.model.OneToOneEntity;
-import com.github.shyiko.rook.it.hcom.model.RootEntity;
+import com.github.shyiko.rook.it.h4com.model.OneToManyEntity;
+import com.github.shyiko.rook.it.h4com.model.OneToOneEntity;
+import com.github.shyiko.rook.it.h4com.model.RootEntity;
 import com.github.shyiko.rook.source.mysql.MySQLReplicationStream;
 import com.github.shyiko.rook.target.hibernate4.cache.HibernateCacheSynchronizer;
 import com.github.shyiko.rook.target.hibernate4.cache.QueryCacheSynchronizer;

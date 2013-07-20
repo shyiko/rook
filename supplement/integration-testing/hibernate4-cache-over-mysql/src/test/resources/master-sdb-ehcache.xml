@@ -9,17 +9,17 @@
     <cache name="org.hibernate.cache.spi.UpdateTimestampsCache"
            maxEntriesLocalHeap="100" eternal="true" overflowToDisk="false"/>
 
-    <cache name="com.github.shyiko.rook.it.hcom.model.RootEntity"
+    <cache name="com.github.shyiko.rook.it.h4com.model.RootEntity"
            maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
-    <cache name="com.github.shyiko.rook.it.hcom.model.RootEntity.oneToManyEntities"
+    <cache name="com.github.shyiko.rook.it.h4com.model.RootEntity.oneToManyEntities"
            maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
-    <cache name="com.github.shyiko.rook.it.hcom.model.RootEntity.joinedOneToManyEntities"
+    <cache name="com.github.shyiko.rook.it.h4com.model.RootEntity.joinedOneToManyEntities"
            maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
-    <cache name="com.github.shyiko.rook.it.hcom.model.OneToOneEntity"
+    <cache name="com.github.shyiko.rook.it.h4com.model.OneToOneEntity"
            maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
-    <cache name="com.github.shyiko.rook.it.hcom.model.OneToManyEntity"
+    <cache name="com.github.shyiko.rook.it.h4com.model.OneToManyEntity"
            maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
-    <cache name="com.github.shyiko.rook.it.hcom.model.JoinedOneToManyEntity"
+    <cache name="com.github.shyiko.rook.it.h4com.model.JoinedOneToManyEntity"
            maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
 
 </ehcache>

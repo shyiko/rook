@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.shyiko.rook.it.hcom.model;
+package com.github.shyiko.rook.it.h4com.model;
 
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
@@ -28,7 +28,7 @@ import javax.persistence.Id;
  */
 @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
 @Entity
-public class OneToManyEntity {
+public class OneToOneEntity {
 
     @Id
     @GeneratedValue
@@ -36,10 +36,10 @@ public class OneToManyEntity {
     @Column(nullable = false)
     private String name;
 
-    public OneToManyEntity() {
+    public OneToOneEntity() {
     }
 
-    public OneToManyEntity(String name) {
+    public OneToOneEntity(String name) {
         this.name = name;
     }
 
@@ -59,8 +59,9 @@ public class OneToManyEntity {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        OneToManyEntity student = (OneToManyEntity) o;
-        return name.equals(student.name);
+        OneToOneEntity teacher = (OneToOneEntity) o;
+        return name.equals(teacher.name);
+
     }
 
     @Override

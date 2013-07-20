@@ -13,42 +13,48 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.shyiko.rook.it.hcom.model;
+package com.github.shyiko.rook.it.h4com.model;
 
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.LazyToOne;
+import org.hibernate.annotations.LazyToOneOption;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
 @Entity
-public class OneToOneEntity {
+public class JoinedOneToManyEntity {
 
     @Id
     @GeneratedValue
     private long id;
     @Column(nullable = false)
     private String name;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @LazyToOne(LazyToOneOption.PROXY)
+    @JoinColumn(name = "root_entity_id")
+    private RootEntity rootEntity;
 
-    public OneToOneEntity() {
-    }
-
-    public OneToOneEntity(String name) {
+    public JoinedOneToManyEntity(String name) {
         this.name = name;
     }
 
-    public String getName() {
-        return name;
+    public RootEntity getRootEntity() {
+        return rootEntity;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setRootEntity(RootEntity rootEntity) {
+        this.rootEntity = rootEntity;
     }
 
     @Override
@@ -59,9 +65,8 @@ public class OneToOneEntity {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        OneToOneEntity teacher = (OneToOneEntity) o;
-        return name.equals(teacher.name);
-
+        JoinedOneToManyEntity that = (JoinedOneToManyEntity) o;
+        return name.equals(that.name);
     }
 
     @Override
