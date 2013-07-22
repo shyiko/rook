@@ -4,13 +4,46 @@ Change Data Capture (CDC) toolkit for keeping system layers in sync with the dat
 
 Out-of-box rook includes support for MySQL as a source and Hibernate 4 cache (query & 2nd level) as a target.
 
-Examples
----------------
+## Usage
 
-Automatic eviction of Hibernate 4 Query & Second Level caches in case of MySQL Master-Slave setup<br/>
-[supplement/integration-testing/hibernate4-cache-over-mysql](https://github.com/shyiko/rook/tree/master/supplement/integration-testing/hibernate4-cache-over-mysql)
+The latest development version always available through Sonatype Snapshots repository (see example below).
 
-License
----------------
+```xml
+<dependencies>
+    <dependency>
+        <groupId>com.github.shyiko.rook</groupId>
+        <artifactId>rook</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </dependency>
+</dependencies>
+
+<repositories>
+    <repository>
+    <id>sonatype-snapshots</id>
+    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    <snapshots>
+        <enabled>true</enabled>
+    </snapshots>
+    <releases>
+        <enabled>false</enabled>
+    </releases>
+    </repository>
+</repositories>
+```
+
+### Propagation of MySQL replication events (changes) to the Hibernate 4 Second Level and (or) Query caches
+
+```java
+org.hibernate.cfg.Configuration configuration = ...
+org.hibernate.SessionFactory sessionFactory = ...
+new MySQLReplicationStream("hostname", 3306).
+    authenticateWith("username", "password").
+    registerListener(new HibernateCacheSynchronizer(configuration, sessionFactory)).
+    connect();
+```
+
+> Integration tests available at [supplement/integration-testing/hibernate4-cache-over-mysql](https://github.com/shyiko/rook/tree/master/supplement/integration-testing/hibernate4-cache-over-mysql)
+
+## License
 
 [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
