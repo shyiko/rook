@@ -6,17 +6,9 @@ Out-of-box rook includes support for MySQL as a source and Hibernate 4 cache (qu
 
 ## Usage
 
-The latest development version always available through Sonatype Snapshots repository (see example below).
+The latest development version always available through Sonatype Snapshots repository:
 
 ```xml
-<dependencies>
-    <dependency>
-        <groupId>com.github.shyiko.rook</groupId>
-        <artifactId>rook</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
-    </dependency>
-</dependencies>
-
 <repositories>
     <repository>
     <id>sonatype-snapshots</id>
@@ -32,6 +24,21 @@ The latest development version always available through Sonatype Snapshots repos
 ```
 
 ### Propagation of MySQL replication events (changes) to the Hibernate 4 Second Level and (or) Query caches
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>com.github.shyiko.rook</groupId>
+        <artifactId>rook-source-mysql</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+        <groupId>com.github.shyiko.rook</groupId>
+        <artifactId>rook-target-hibernate4-cache</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </dependency>
+</dependencies>
+```
 
 ```java
 org.hibernate.cfg.Configuration configuration = ...
