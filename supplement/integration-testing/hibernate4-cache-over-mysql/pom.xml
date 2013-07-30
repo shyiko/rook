@@ -8,6 +8,11 @@
     <artifactId>hibernate4-cache-over-mysql</artifactId>
     <version>0.1.0-SNAPSHOT</version>
 
+    <properties>
+        <vagrant.bin>vagrant</vagrant.bin>
+        <vagrant.integration.box>${basedir}</vagrant.integration.box>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.github.shyiko.rook</groupId>
@@ -46,5 +51,80 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.10</version>
+                <configuration>
+                    <excludes>
+                        <exclude>**/*IntegrationTest.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>2.15</version>
+                <configuration>
+                    <includes>
+                        <include>**/*IntegrationTest.java</include>
+                    </includes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!--
+                unfortunately net.ju-n.maven.plugins:vagrant-maven-plugin does not support vagrant 1.1+
+                at the moment, so I'm gonna use exec-maven-plugin instead
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.1.1</version>
+                <executions>
+                    <execution>
+                        <id>start-vagrant-vm</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <workingDirectory>${vagrant.integration.box}</workingDirectory>
+                            <executable>${vagrant.bin}</executable>
+                            <arguments>
+                                <argument>up</argument>
+                            </arguments>
+                            <skip>${skipTests}</skip>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>destroy-vagrant-vm</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <workingDirectory>${vagrant.integration.box}</workingDirectory>
+                            <executable>${vagrant.bin}</executable>
+                            <arguments>
+                                <argument>destroy</argument>
+                                <argument>--force</argument>
+                            </arguments>
+                            <skip>${skipTests}</skip>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
