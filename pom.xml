@@ -133,6 +133,12 @@
 
     <profiles>
         <profile>
+            <id>with-integration-tests</id>
+            <modules>
+                <module>supplement/integration-testing/hibernate4-cache-over-mysql</module>
+            </modules>
+        </profile>
+        <profile>
             <id>with-sources-and-javadocs</id>
             <build>
                 <plugins>
