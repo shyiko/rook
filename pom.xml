@@ -113,6 +113,10 @@
                         # build everything (append "-DskipTests=true" if you wish to skip tests)
                         mvn clean install
 
+                        # run unit + integration tests, validate codebase using checkstyle and measure test coverage
+                        mvn -P coverage,with-integration-tests clean verify
+                        mvn -P coverage -N antrun:run # for aggregated coverage results
+
                         # deploy snapshots into nexus
                         mvn -P with-sources-and-javadocs -Ddeploy=snapshot
 
@@ -132,6 +136,93 @@
     </build>
 
     <profiles>
+        <profile>
+            <id>coverage</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>0.5.5.201112152213</version>
+                        <configuration>
+                            <destFile>${basedir}/target/coverage-reports/jacoco-unit.exec</destFile>
+                            <dataFile>${basedir}/target/coverage-reports/jacoco-unit.exec</dataFile>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>jacoco-initialize</id>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>jacoco-site</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>1.7</version>
+                        <configuration>
+                            <target>
+                                <typedef resource="org/jacoco/ant/antlib.xml"/>
+                                <report>
+                                    <executiondata>
+                                        <fileset dir="rook-target-hibernate4-cache/target/coverage-reports"
+                                                 includes="jacoco-unit.exec"/>
+                                        <fileset dir="supplement/integration-testing/hibernate4-cache-over-mysql/target/coverage-reports"
+                                                 includes="jacoco-unit.exec"/>
+                                    </executiondata>
+                                    <structure name="rook">
+                                        <group name="rook-api">
+                                            <classfiles>
+                                                <fileset dir="rook-api/target/classes" includes="**/*.class"/>
+                                            </classfiles>
+                                            <sourcefiles>
+                                                <fileset dir="rook-api/src/main/java"/>
+                                            </sourcefiles>
+                                        </group>
+                                        <group name="rook-source-mysql">
+                                            <classfiles>
+                                                <fileset dir="rook-source-mysql/target/classes" includes="**/*.class"/>
+                                            </classfiles>
+                                            <sourcefiles>
+                                                <fileset dir="rook-source-mysql/src/main/java"/>
+                                            </sourcefiles>
+                                        </group>
+                                        <group name="rook-target-hibernate4-cache">
+                                            <classfiles>
+                                                <fileset dir="rook-target-hibernate4-cache/target/classes"
+                                                         includes="**/*.class"/>
+                                            </classfiles>
+                                            <sourcefiles>
+                                                <fileset dir="rook-target-hibernate4-cache/src/main/java"/>
+                                            </sourcefiles>
+                                        </group>
+                                    </structure>
+                                    <html destdir="${project.build.directory}/coverage"/>
+                                    <csv destfile="${project.build.directory}/coverage/coverage.csv"/>
+                                    <xml destfile="${project.build.directory}/coverage/coverage.xml"/>
+                                </report>
+                                <echo message="Report saved to ${project.build.directory}/coverage/index.html"/>
+                            </target>
+                        </configuration>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.jacoco</groupId>
+                                <artifactId>org.jacoco.ant</artifactId>
+                                <version>0.6.3.201306030806</version>
+                            </dependency>
+                        </dependencies>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>with-integration-tests</id>
             <modules>
