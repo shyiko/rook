@@ -117,6 +117,9 @@
                         mvn -P coverage,with-integration-tests clean verify
                         mvn -P coverage -N antrun:run # for aggregated coverage results
 
+                        # submit coverage report to coveralls
+                        mvn -P coverage -N coveralls:jacoco -DrepoToken=&lt;coveralls.io&gt;
+
                         # deploy snapshots into nexus
                         mvn -P with-sources-and-javadocs -Ddeploy=snapshot
 
@@ -219,6 +222,19 @@
                                 <version>0.6.3.201306030806</version>
                             </dependency>
                         </dependencies>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.eluder.coveralls</groupId>
+                        <artifactId>coveralls-maven-plugin</artifactId>
+                        <version>2.0.0</version>
+                        <configuration>
+                            <coverageFile>${project.build.directory}/coverage/coverage.xml</coverageFile>
+                            <sourceDirectories>
+                                <sourceDirectory>rook-api/src/main/java</sourceDirectory>
+                                <sourceDirectory>rook-source-mysql/src/main/java</sourceDirectory>
+                                <sourceDirectory>rook-target-hibernate4-cache/src/main/java</sourceDirectory>
+                            </sourceDirectories>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
