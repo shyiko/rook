@@ -17,6 +17,7 @@ package com.github.shyiko.rook.it.h4com;
 
 import com.github.shyiko.rook.api.ReplicationEventListener;
 import com.github.shyiko.rook.api.event.CompositeReplicationEvent;
+import com.github.shyiko.rook.api.event.DeleteRowReplicationEvent;
 import com.github.shyiko.rook.api.event.InsertRowReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.UpdateRowReplicationEvent;
@@ -57,6 +58,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 
 /**
@@ -174,10 +176,10 @@ public class IntegrationTest {
                 )));
             }
         });
-        CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener(
+        CountDownReplicationListener updateCountDownReplicationListener = new CountDownReplicationListener(
             UpdateRowReplicationEvent.class, 1
         );
-        replicationStream.registerListener(countDownReplicationListener);
+        replicationStream.registerListener(updateCountDownReplicationListener);
         slaveContext.execute(new Callback<Session>() {
 
             @Override
@@ -195,13 +197,33 @@ public class IntegrationTest {
                 session.merge(rootEntity);
             }
         });
-        assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+        assertTrue(updateCountDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
         slaveContext.execute(new Callback<Session>() {
 
             @Override
             public void execute(Session session) {
                 RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId.get());
                 assertEquals(rootEntity.getName(), enableSLCS ? "Slytherin House" : "Slytherin");
+            }
+        });
+        CountDownReplicationListener deleteCountDownReplicationListener = new CountDownReplicationListener(
+            DeleteRowReplicationEvent.class, 1
+        );
+        replicationStream.registerListener(deleteCountDownReplicationListener);
+        masterContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                session.delete(session.get(RootEntity.class, rootEntityId.get()));
+            }
+        });
+        assertTrue(deleteCountDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+        slaveContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId.get());
+                assertTrue(enableSLCS == (rootEntity == null));
             }
         });
     }
