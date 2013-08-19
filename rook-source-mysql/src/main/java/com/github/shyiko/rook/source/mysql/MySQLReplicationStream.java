@@ -90,7 +90,7 @@ public class MySQLReplicationStream implements ReplicationStream {
         }
         binaryLogClient = new BinaryLogClient(hostname, port, username, password);
         binaryLogClient.registerEventListener(new DelegatingEventListener());
-        binaryLogClient.connect(3, TimeUnit.SECONDS);
+        binaryLogClient.connect(TimeUnit.SECONDS.toMillis(3));
     }
 
     @Override
