@@ -53,6 +53,7 @@
         <module>rook-api</module>
         <module>rook-source-mysql</module>
         <module>rook-target-hibernate4-cache</module>
+        <module>rook-target-hibernate4-fulltextindex</module>
     </modules>
 
     <reporting>
