@@ -23,7 +23,7 @@ The latest development version always available through Sonatype Snapshots repos
 </repositories>
 ```
 
-### Propagation of MySQL replication events (changes) to the Hibernate 4 Second Level and (or) Query caches
+### Eviction of Hibernate 4 Second Level/Query cache records in response to the replication events (on MySQL)
 
 ```xml
 <dependencies>
