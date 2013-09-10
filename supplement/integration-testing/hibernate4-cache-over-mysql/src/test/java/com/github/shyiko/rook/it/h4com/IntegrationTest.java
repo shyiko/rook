@@ -46,6 +46,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.net.URI;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -58,7 +61,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 
 /**
@@ -71,6 +73,9 @@ public class IntegrationTest {
 
     @BeforeClass
     public void setUp() throws Exception {
+        Class.forName("com.mysql.jdbc.Driver");
+        recreateDatabaseForProfiles("master", "master-sdb");
+        // todo: make sure changes got replicated
         ResourceBundle bundle = ResourceBundle.getBundle("slave");
         String dsURL = bundle.getString("hibernate.connection.url");
         URI uri = new URI("schema" + dsURL.substring(dsURL.indexOf("://")));
@@ -78,6 +83,32 @@ public class IntegrationTest {
             authenticateWith(bundle.getString("hibernate.connection.username"),
                     bundle.getString("hibernate.connection.password"));
         replicationStream.connect();
+    }
+
+    private void recreateDatabaseForProfiles(String... profiles) throws Exception {
+        for (String profile : profiles) {
+            ResourceBundle bundle = ResourceBundle.getBundle(profile);
+            recreateDatabase(bundle.getString("hibernate.connection.url"),
+                bundle.getString("hibernate.connection.username"), bundle.getString("hibernate.connection.password"));
+        }
+    }
+
+    private void recreateDatabase(String connectionURI, String username, String password) throws Exception {
+        int delimiter = connectionURI.lastIndexOf("/");
+        Connection connection = DriverManager.getConnection(connectionURI.substring(0, delimiter),
+            username, password);
+        try {
+            Statement statement = connection.createStatement();
+            try {
+                String databaseName = connectionURI.substring(delimiter + 1);
+                statement.execute("drop database if exists " + databaseName);
+                statement.execute("create database " + databaseName);
+            } finally {
+                statement.close();
+            }
+        } finally {
+            connection.close();
+        }
     }
 
     @BeforeMethod

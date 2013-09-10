@@ -17,7 +17,7 @@
 
     <properties>
         <vagrant.bin>vagrant</vagrant.bin>
-        <vagrant.integration.box>${basedir}</vagrant.integration.box>
+        <vagrant.integration.box>${basedir}/../../vagrant/mysql-5.5.27-sandbox-prepackaged</vagrant.integration.box>
     </properties>
 
     <dependencies>
