@@ -244,6 +244,7 @@
             <id>with-integration-tests</id>
             <modules>
                 <module>supplement/integration-testing/hibernate4-cache-over-mysql</module>
+                <module>supplement/integration-testing/hibernate4-fulltextindex-over-mysql</module>
             </modules>
         </profile>
         <profile>
