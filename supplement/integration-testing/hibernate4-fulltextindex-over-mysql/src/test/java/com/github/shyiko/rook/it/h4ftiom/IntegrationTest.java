@@ -66,8 +66,11 @@ import static org.testng.Assert.assertTrue;
  */
 public class IntegrationTest {
 
+    private static final long DEFAULT_TIMEOUT = TimeUnit.SECONDS.toMillis(3);
+
     private final Logger logger = LoggerFactory.getLogger(IntegrationTest.class);
     private MySQLReplicationStream replicationStream;
+    private CountDownReplicationListener countDownReplicationListener;
 
     @BeforeClass
     public void setUp() throws Exception {
@@ -104,6 +107,7 @@ public class IntegrationTest {
 
     @BeforeMethod
     public void beforeTest() {
+        replicationStream.registerListener(countDownReplicationListener = new CountDownReplicationListener());
         replicationStream.registerListener(new ReplicationEventListener() {
 
             @Override
@@ -147,10 +151,6 @@ public class IntegrationTest {
                 })
             );
         }
-        CountDownReplicationListener insertCountDownReplicationListener = new CountDownReplicationListener(
-            InsertRowReplicationEvent.class, 4
-        );
-        replicationStream.registerListener(insertCountDownReplicationListener);
         masterContext.execute(new Callback<Session>() {
 
             @Override
@@ -165,7 +165,7 @@ public class IntegrationTest {
                 ));
             }
         });
-        assertTrue(insertCountDownReplicationListener.waitForCompletion(7, TimeUnit.SECONDS));
+        countDownReplicationListener.waitFor(InsertRowReplicationEvent.class, 7, DEFAULT_TIMEOUT);
         slaveContext.execute(new Callback<Session>() {
 
             @Override

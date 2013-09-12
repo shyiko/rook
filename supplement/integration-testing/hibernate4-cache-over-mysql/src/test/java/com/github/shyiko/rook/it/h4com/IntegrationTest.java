@@ -68,8 +68,11 @@ import static org.testng.Assert.assertTrue;
  */
 public class IntegrationTest {
 
+    private static final long DEFAULT_TIMEOUT = TimeUnit.SECONDS.toMillis(3);
+
     private final Logger logger = LoggerFactory.getLogger(IntegrationTest.class);
     private MySQLReplicationStream replicationStream;
+    private CountDownReplicationListener countDownReplicationListener;
 
     @BeforeClass
     public void setUp() throws Exception {
@@ -113,6 +116,7 @@ public class IntegrationTest {
 
     @BeforeMethod
     public void beforeTest() {
+        replicationStream.registerListener(countDownReplicationListener = new CountDownReplicationListener());
         replicationStream.registerListener(new ReplicationEventListener() {
 
             @Override
@@ -150,10 +154,6 @@ public class IntegrationTest {
                 assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(), 0);
             }
         });
-        CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener(
-            InsertRowReplicationEvent.class, 1
-        );
-        replicationStream.registerListener(countDownReplicationListener);
         masterContext.execute(new Callback<Session>() {
 
             @Override
@@ -161,7 +161,7 @@ public class IntegrationTest {
                 session.persist(new RootEntity("Slytherin"));
             }
         });
-        assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+        countDownReplicationListener.waitFor(InsertRowReplicationEvent.class, 1, DEFAULT_TIMEOUT);
         slaveContext.execute(new Callback<Session>() {
 
             @Override
@@ -207,10 +207,6 @@ public class IntegrationTest {
                 )));
             }
         });
-        CountDownReplicationListener updateCountDownReplicationListener = new CountDownReplicationListener(
-            UpdateRowReplicationEvent.class, 1
-        );
-        replicationStream.registerListener(updateCountDownReplicationListener);
         slaveContext.execute(new Callback<Session>() {
 
             @Override
@@ -228,7 +224,7 @@ public class IntegrationTest {
                 session.merge(rootEntity);
             }
         });
-        assertTrue(updateCountDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+        countDownReplicationListener.waitFor(UpdateRowReplicationEvent.class, 1, DEFAULT_TIMEOUT);
         slaveContext.execute(new Callback<Session>() {
 
             @Override
@@ -237,10 +233,6 @@ public class IntegrationTest {
                 assertEquals(rootEntity.getName(), enableSLCS ? "Slytherin House" : "Slytherin");
             }
         });
-        CountDownReplicationListener deleteCountDownReplicationListener = new CountDownReplicationListener(
-            DeleteRowReplicationEvent.class, 1
-        );
-        replicationStream.registerListener(deleteCountDownReplicationListener);
         masterContext.execute(new Callback<Session>() {
 
             @Override
@@ -248,7 +240,7 @@ public class IntegrationTest {
                 session.delete(session.get(RootEntity.class, rootEntityId.get()));
             }
         });
-        assertTrue(deleteCountDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+        countDownReplicationListener.waitFor(DeleteRowReplicationEvent.class, 1, DEFAULT_TIMEOUT);
         slaveContext.execute(new Callback<Session>() {
 
             @Override
@@ -285,10 +277,6 @@ public class IntegrationTest {
                 }
             });
         }
-        CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener(
-                InsertRowReplicationEvent.class, 2
-        );
-        replicationStream.registerListener(countDownReplicationListener);
         for (final ReplicationContext group : new ReplicationContext[] {primaryContext, separateContext}) {
             group.master.execute(new Callback<Session>() {
 
@@ -298,7 +286,7 @@ public class IntegrationTest {
                 }
             });
         }
-        assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+        countDownReplicationListener.waitFor(InsertRowReplicationEvent.class, 2, DEFAULT_TIMEOUT);
         primaryContext.slave.execute(new Callback<Session>() {
 
             @Override
@@ -318,13 +306,6 @@ public class IntegrationTest {
     @Test
     public void testReplicationEventsComeGroupedByStatement() throws Exception {
         ExecutionContext masterContext = ExecutionContextHolder.get("master");
-        CountDownReplicationListener regCountDownReplicationListener = new CountDownReplicationListener(
-                CompositeReplicationEvent.class, 1
-        ), countDownReplicationListener = new CountDownReplicationListener(
-                InsertRowReplicationEvent.class, 3
-        );
-        replicationStream.registerListener(regCountDownReplicationListener);
-        replicationStream.registerListener(countDownReplicationListener);
         masterContext.execute(new Callback<Session>() {
 
             @Override
@@ -334,6 +315,7 @@ public class IntegrationTest {
                 session.persist(new RootEntity("Ravenclaw"));
             }
         });
+        countDownReplicationListener.waitFor(InsertRowReplicationEvent.class, 3, DEFAULT_TIMEOUT);
         masterContext.execute(new Callback<Session>() {
 
             @Override
@@ -341,8 +323,7 @@ public class IntegrationTest {
                 session.createQuery("update RootEntity set name = '~'").executeUpdate();
             }
         });
-        assertTrue(regCountDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
-        assertTrue(countDownReplicationListener.waitForCompletion(3, TimeUnit.SECONDS));
+        countDownReplicationListener.waitFor(CompositeReplicationEvent.class, 1, DEFAULT_TIMEOUT);
     }
 
     @AfterMethod(alwaysRun = true)

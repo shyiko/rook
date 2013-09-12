@@ -18,31 +18,75 @@ package com.github.shyiko.rook.it.h4ftiom;
 import com.github.shyiko.rook.api.ReplicationEventListener;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * todo(shyiko): new CountDownReplicationListener().waitFor(eventClass, numberOfEvents, timeout) would be better
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 public class CountDownReplicationListener implements ReplicationEventListener {
 
-    private final Class<? extends ReplicationEvent> eventClass;
-    private CountDownLatch latch;
-
-    public CountDownReplicationListener(Class<? extends ReplicationEvent> eventClass, int numberOfEvents) {
-        this.eventClass = eventClass;
-        this.latch = new CountDownLatch(numberOfEvents);
-    }
+    private final Map<Class<? extends ReplicationEvent>, AtomicInteger> countersByDataClass =
+        new HashMap<Class<? extends ReplicationEvent>, AtomicInteger>();
 
     @Override
     public void onEvent(ReplicationEvent event) {
-        if (eventClass.isInstance(event)) {
-            latch.countDown();
+        incrementCounter(getCounter(event.getClass()));
+    }
+
+    private AtomicInteger getCounter(Class<? extends ReplicationEvent> key) {
+        synchronized (countersByDataClass) {
+            AtomicInteger counter = countersByDataClass.get(key);
+            if (counter == null) {
+                countersByDataClass.put(key, counter = new AtomicInteger());
+            }
+            return counter;
         }
     }
 
-    public boolean waitForCompletion(long timeout, TimeUnit unit) throws InterruptedException {
-        return latch.await(timeout, unit);
+    private void incrementCounter(AtomicInteger counter) {
+        synchronized (counter) {
+            if (counter.incrementAndGet() == 0) {
+                counter.notify();
+            }
+        }
     }
+
+    public void waitFor(Class<? extends ReplicationEvent> dataClass, int numberOfEvents, long timeoutInMilliseconds)
+        throws TimeoutException, InterruptedException {
+        waitForCounterToGetZero(dataClass.getSimpleName(), getCounter(dataClass), numberOfEvents,
+            timeoutInMilliseconds);
+    }
+
+    private void waitForCounterToGetZero(String counterName, AtomicInteger counter, int numberOfExpectedEvents,
+                                         long timeoutInMilliseconds) throws TimeoutException, InterruptedException {
+        synchronized (counter) {
+            counter.set(counter.get() - numberOfExpectedEvents);
+            if (counter.get() != 0) {
+                counter.wait(timeoutInMilliseconds);
+                if (counter.get() != 0) {
+                    throw new TimeoutException("Received " + (numberOfExpectedEvents + counter.get()) + " " +
+                        counterName + " event(s) instead of expected " + numberOfExpectedEvents);
+                }
+            }
+        }
+    }
+
+    public void reset() {
+        synchronized (countersByDataClass) {
+            countersByDataClass.clear();
+        }
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("CountDownEventListener{");
+        sb.append("countersByDataClass=").append(countersByDataClass);
+        sb.append('}');
+        return sb.toString();
+    }
+
 }
