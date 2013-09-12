@@ -17,6 +17,7 @@ package com.github.shyiko.rook.target.hibernate4.fulltextindex;
 
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
 import org.hibernate.search.FullTextSession;
 import org.hibernate.search.Search;
 
@@ -39,8 +40,17 @@ public class DefaultEntityIndexer implements EntityIndexer {
         try {
             Object entity = session.get(entityClass, id);
             FullTextSession fullTextSession = Search.getFullTextSession(session);
-            fullTextSession.index(entity);
-            fullTextSession.flushToIndexes(); // fixme: insanely inefficient
+            Transaction tx = fullTextSession.beginTransaction();
+            try {
+                if (entity != null) {
+                    fullTextSession.index(entity);
+                } else {
+                    fullTextSession.purge(entityClass, id);
+                }
+                tx.commit();
+            } catch (RuntimeException e) {
+                tx.rollback();
+            }
         } finally {
             session.close();
         }

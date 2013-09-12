@@ -16,8 +16,10 @@
 package com.github.shyiko.rook.it.h4ftiom;
 
 import com.github.shyiko.rook.api.ReplicationEventListener;
+import com.github.shyiko.rook.api.event.DeleteRowReplicationEvent;
 import com.github.shyiko.rook.api.event.InsertRowReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
+import com.github.shyiko.rook.api.event.UpdateRowReplicationEvent;
 import com.github.shyiko.rook.it.h4ftiom.model.OneToManyEntity;
 import com.github.shyiko.rook.it.h4ftiom.model.RootEntity;
 import com.github.shyiko.rook.source.mysql.MySQLReplicationStream;
@@ -58,7 +60,9 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
+import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 
 /**
@@ -107,7 +111,6 @@ public class IntegrationTest {
 
     @BeforeMethod
     public void beforeTest() {
-        replicationStream.registerListener(countDownReplicationListener = new CountDownReplicationListener());
         replicationStream.registerListener(new ReplicationEventListener() {
 
             @Override
@@ -151,6 +154,14 @@ public class IntegrationTest {
                 })
             );
         }
+        replicationStream.registerListener(countDownReplicationListener = new CountDownReplicationListener());
+        testFullTextIndexUpdateOnInsert(masterContext, slaveContext, enableFTIS);
+        testFullTextIndexUpdateOnUpdate(masterContext, slaveContext, enableFTIS);
+        testFullTextIndexUpdateOnDelete(masterContext, slaveContext, enableFTIS);
+    }
+
+    private void testFullTextIndexUpdateOnInsert(ExecutionContext masterContext, ExecutionContext slaveContext,
+            final boolean enableFTIS) throws TimeoutException, InterruptedException {
         masterContext.execute(new Callback<Session>() {
 
             @Override
@@ -163,26 +174,78 @@ public class IntegrationTest {
                         new OneToManyEntity("Gregory Goyle")
                     ))
                 ));
+                session.persist(new RootEntity("Gryffindor"));
             }
         });
-        countDownReplicationListener.waitFor(InsertRowReplicationEvent.class, 7, DEFAULT_TIMEOUT);
+        countDownReplicationListener.waitFor(InsertRowReplicationEvent.class, 8, DEFAULT_TIMEOUT);
         slaveContext.execute(new Callback<Session>() {
 
             @Override
             public void execute(Session session) {
-                FullTextSession fullTextSession = Search.getFullTextSession(session);
-                QueryBuilder qb = fullTextSession.getSearchFactory().
-                    buildQueryBuilder().forEntity(RootEntity.class).get();
-                Query luceneQuery = qb.keyword().onField("name").matching("Slytherin").createQuery();
-                FullTextQuery ftsQuery = fullTextSession.createFullTextQuery(luceneQuery, RootEntity.class);
-                RootEntity rootEntity = (RootEntity) ftsQuery.uniqueResult();
-                assertTrue(enableFTIS == (rootEntity != null));
+                assertTrue(enableFTIS == (searchRootEntityUsingFTI(session, "name", "Slytherin") != null));
             }
         });
     }
 
+    private void testFullTextIndexUpdateOnDelete(ExecutionContext masterContext, ExecutionContext slaveContext,
+            final boolean enableFTIS) throws TimeoutException, InterruptedException {
+        slaveContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                assertTrue(enableFTIS == (searchRootEntityUsingFTI(session, "name", "Gryffindor") != null));
+            }
+        });
+        masterContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                session.createQuery("delete from RootEntity where name = 'Gryffindor'").executeUpdate();
+            }
+        });
+        countDownReplicationListener.waitFor(DeleteRowReplicationEvent.class, 1, DEFAULT_TIMEOUT);
+        slaveContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                assertNull(searchRootEntityUsingFTI(session, "name", "Gryffindor"));
+            }
+        });
+    }
+
+    private void testFullTextIndexUpdateOnUpdate(ExecutionContext masterContext, ExecutionContext slaveContext,
+            final boolean enableFTIS) throws TimeoutException, InterruptedException {
+        masterContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                session.createQuery("update RootEntity set name = 'Hufflepuff' where name = 'Slytherin'").
+                    executeUpdate();
+            }
+        });
+        countDownReplicationListener.waitFor(UpdateRowReplicationEvent.class, 1, DEFAULT_TIMEOUT);
+        slaveContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                assertNull(searchRootEntityUsingFTI(session, "name", "Slytherin"));
+                assertTrue(enableFTIS == (searchRootEntityUsingFTI(session, "name", "Hufflepuff") != null));
+            }
+        });
+    }
+
+    private RootEntity searchRootEntityUsingFTI(Session session, String field, String value) {
+        FullTextSession fullTextSession = Search.getFullTextSession(session);
+        QueryBuilder qb = fullTextSession.getSearchFactory().
+            buildQueryBuilder().forEntity(RootEntity.class).get();
+        Query luceneQuery = qb.keyword().onField(field).matching(value).createQuery();
+        FullTextQuery ftsQuery = fullTextSession.createFullTextQuery(luceneQuery, RootEntity.class);
+        return  (RootEntity) ftsQuery.uniqueResult();
+    }
+
     @AfterMethod(alwaysRun = true)
     public void afterTest() throws Exception {
+        // todo: clean FTI on slave
         replicationStream.unregisterListener(ReplicationEventListener.class);
         for (ExecutionContext executionContext : ExecutionContextHolder.flush()) {
             executionContext.close();
