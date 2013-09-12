@@ -245,7 +245,6 @@ public class IntegrationTest {
 
     @AfterMethod(alwaysRun = true)
     public void afterTest() throws Exception {
-        // todo: clean FTI on slave
         replicationStream.unregisterListener(ReplicationEventListener.class);
         for (ExecutionContext executionContext : ExecutionContextHolder.flush()) {
             executionContext.close();
