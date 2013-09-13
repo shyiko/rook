@@ -43,8 +43,7 @@ The latest development version always available through Sonatype Snapshots repos
 ```java
 org.hibernate.cfg.Configuration configuration = ...
 org.hibernate.SessionFactory sessionFactory = ...
-new MySQLReplicationStream("hostname", 3306).
-    authenticateWith("username", "password").
+new MySQLReplicationStream("hostname", 3306, "username", "password").
     registerListener(new HibernateCacheSynchronizer(configuration, sessionFactory)).
     connect();
 ```

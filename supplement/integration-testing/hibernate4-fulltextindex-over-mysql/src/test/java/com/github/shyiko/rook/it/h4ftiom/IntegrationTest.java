@@ -85,9 +85,8 @@ public class IntegrationTest {
         // todo: make sure changes got replicated
         String dsURL = bundle.getString("hibernate.connection.url");
         URI uri = new URI("schema" + dsURL.substring(dsURL.indexOf("://")));
-        replicationStream = new MySQLReplicationStream(uri.getHost(), uri.getPort()).
-            authenticateWith(bundle.getString("hibernate.connection.username"),
-                bundle.getString("hibernate.connection.password"));
+        replicationStream = new MySQLReplicationStream(uri.getHost(), uri.getPort(),
+            bundle.getString("hibernate.connection.username"), bundle.getString("hibernate.connection.password"));
         replicationStream.connect();
     }
 

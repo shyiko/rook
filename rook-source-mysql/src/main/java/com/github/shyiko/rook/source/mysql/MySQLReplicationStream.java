@@ -49,8 +49,8 @@ public class MySQLReplicationStream implements ReplicationStream {
 
     private Logger logger = LoggerFactory.getLogger(getClass());
 
-    private String hostname = "localhost";
-    private int port = 3306;
+    private String hostname;
+    private int port;
     private String username;
     private String password;
 
@@ -59,28 +59,15 @@ public class MySQLReplicationStream implements ReplicationStream {
     private final List<ReplicationEventListener> listeners = new LinkedList<ReplicationEventListener>();
     private final Map<Long, TableMapEventData> tablesById = new HashMap<Long, TableMapEventData>();
 
-    public MySQLReplicationStream() {
+    public MySQLReplicationStream(String username, String password) {
+        this("localhost", 3306, username, password);
     }
 
-    public MySQLReplicationStream(String hostname) {
-        this();
-        this.hostname = hostname;
-    }
-
-    public MySQLReplicationStream(String hostname, int port) {
-        this();
+    public MySQLReplicationStream(String hostname, int port, String username, String password) {
         this.hostname = hostname;
         this.port = port;
-    }
-
-    public MySQLReplicationStream authenticateWith(String username, String password) {
-        if (isConnected()) {
-            throw new IllegalStateException(
-                    "Replication stream needs to be disconnected before authentication details can be changed");
-        }
         this.username = username;
         this.password = password;
-        return this;
     }
 
     @Override
