@@ -39,7 +39,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -49,15 +48,14 @@ public class MySQLReplicationStream implements ReplicationStream {
 
     private Logger logger = LoggerFactory.getLogger(getClass());
 
-    private String hostname;
-    private int port;
-    private String username;
-    private String password;
+    private final String hostname;
+    private final int port;
+    private final String username;
+    private final String password;
 
     private BinaryLogClient binaryLogClient;
 
     private final List<ReplicationEventListener> listeners = new LinkedList<ReplicationEventListener>();
-    private final Map<Long, TableMapEventData> tablesById = new HashMap<Long, TableMapEventData>();
 
     public MySQLReplicationStream(String username, String password) {
         this("localhost", 3306, username, password);
@@ -71,26 +69,42 @@ public class MySQLReplicationStream implements ReplicationStream {
     }
 
     @Override
-    public void connect() throws IOException, TimeoutException, InterruptedException {
-        if (binaryLogClient != null) {
-            throw new IllegalStateException();
-        }
-        binaryLogClient = new BinaryLogClient(hostname, port, username, password);
-        binaryLogClient.registerEventListener(new DelegatingEventListener());
-        binaryLogClient.connect(TimeUnit.SECONDS.toMillis(3));
+    public void connect() throws IOException {
+        allocateBinaryLogClient().connect();
     }
 
     @Override
-    public boolean isConnected() {
+    public void connect(long timeoutInMilliseconds) throws IOException, TimeoutException {
+        allocateBinaryLogClient().connect(timeoutInMilliseconds);
+    }
+
+    private synchronized BinaryLogClient allocateBinaryLogClient() {
+        if (isConnected()) {
+            throw new IllegalStateException("MySQL replication stream is already open");
+        }
+        binaryLogClient = new BinaryLogClient(hostname, port, username, password);
+        binaryLogClient.registerEventListener(new DelegatingEventListener());
+        // todo: bind this.disconnect() to binaryLogClient disconnect event
+        return binaryLogClient;
+    }
+
+    @Override
+    public synchronized boolean isConnected() {
         return binaryLogClient != null && binaryLogClient.isConnected();
     }
 
     @Override
-    public MySQLReplicationStream registerListener(ReplicationEventListener listener) {
+    public void registerListener(ReplicationEventListener listener) {
         synchronized (listeners) {
             listeners.add(listener);
         }
-        return this;
+    }
+
+    @Override
+    public void unregisterListener(ReplicationEventListener listener) {
+        synchronized (listeners) {
+            listeners.remove(listener);
+        }
     }
 
     public void unregisterListener(Class<? extends ReplicationEventListener> listenerClass) {
@@ -106,7 +120,7 @@ public class MySQLReplicationStream implements ReplicationStream {
     }
 
     @Override
-    public void disconnect() throws IOException {
+    public synchronized void disconnect() throws IOException {
         if (binaryLogClient != null) {
             binaryLogClient.disconnect();
             binaryLogClient = null;
@@ -137,6 +151,8 @@ public class MySQLReplicationStream implements ReplicationStream {
 
     private final class DelegatingEventListener implements BinaryLogClient.EventListener {
 
+        private final Map<Long, TableMapEventData> tablesById = new HashMap<Long, TableMapEventData>();
+
         @Override
         public void onEvent(Event event) {
             // todo: do something about schema changes
@@ -160,6 +176,7 @@ public class MySQLReplicationStream implements ReplicationStream {
                 case EXT_DELETE_ROWS:
                     handleDeleteRowsEvent(event);
                     break;
+                // todo: InTransactionReplicationEvent
                 default:
                     // ignore
             }

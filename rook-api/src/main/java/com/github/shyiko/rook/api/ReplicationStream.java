@@ -23,9 +23,11 @@ import java.util.concurrent.TimeoutException;
  */
 public interface ReplicationStream {
 
-    void connect() throws IOException, TimeoutException, InterruptedException;
+    void connect() throws IOException;
+    void connect(long timeoutInMilliseconds) throws IOException, TimeoutException;
     boolean isConnected();
-    ReplicationStream registerListener(ReplicationEventListener listener);
+    void registerListener(ReplicationEventListener listener);
+    void unregisterListener(ReplicationEventListener listener);
     void unregisterListener(Class<? extends ReplicationEventListener> listenerClass);
     void disconnect() throws IOException;
 }

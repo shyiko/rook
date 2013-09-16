@@ -84,7 +84,7 @@ public class IntegrationTest {
         URI uri = new URI("schema" + dsURL.substring(dsURL.indexOf("://")));
         replicationStream = new MySQLReplicationStream(uri.getHost(), uri.getPort(),
             bundle.getString("hibernate.connection.username"), bundle.getString("hibernate.connection.password"));
-        replicationStream.connect();
+        replicationStream.connect(DEFAULT_TIMEOUT);
     }
 
     private void recreateDatabaseForProfiles(String... profiles) throws Exception {
