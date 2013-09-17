@@ -181,6 +181,8 @@
                                                  includes="jacoco-unit.exec"/>
                                         <fileset dir="supplement/integration-testing/hibernate4-cache-over-mysql/target/coverage-reports"
                                                  includes="jacoco-unit.exec"/>
+                                        <fileset dir="supplement/integration-testing/hibernate4-fulltextindex-over-mysql/target/coverage-reports"
+                                                 includes="jacoco-unit.exec"/>
                                     </executiondata>
                                     <structure name="rook">
                                         <group name="rook-api">
