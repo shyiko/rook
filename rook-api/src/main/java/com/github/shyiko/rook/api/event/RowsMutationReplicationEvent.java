@@ -18,23 +18,34 @@ package com.github.shyiko.rook.api.event;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
-import java.io.Serializable;
+import java.util.Collection;
 
 /**
+ * @param <T> type of collection for storing rows
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public class UpdateRowReplicationEvent extends RowReplicationEvent {
+public abstract class RowsMutationReplicationEvent<T extends Collection> implements ReplicationEvent {
 
-    private Serializable[] previousValues;
+    private final String schema;
+    private final String table;
+    private final T rows;
 
-    public UpdateRowReplicationEvent(String database, String table, Serializable[] previousValues,
-            Serializable[] values) {
-        super(database, table, values);
-        this.previousValues = previousValues;
+    protected RowsMutationReplicationEvent(String schema, String table, T rows) {
+        this.schema = schema;
+        this.table = table;
+        this.rows = rows;
     }
 
-    public Serializable[] getPreviousValues() {
-        return previousValues;
+    public String getSchema() {
+        return schema;
+    }
+
+    public String getTable() {
+        return table;
+    }
+
+    public T getRows() {
+        return rows;
     }
 
     @Override
@@ -42,8 +53,8 @@ public class UpdateRowReplicationEvent extends RowReplicationEvent {
         return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
             append("schema", schema).
             append("table", table).
-            append("previousValues", previousValues).
-            append("values", values).
+            append("rows", rows).
             toString();
     }
+
 }

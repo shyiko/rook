@@ -16,9 +16,9 @@
 package com.github.shyiko.rook.target.hibernate4.cache;
 
 import com.github.shyiko.rook.api.ReplicationEventListener;
-import com.github.shyiko.rook.api.event.CompositeReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
-import com.github.shyiko.rook.api.event.RowReplicationEvent;
+import com.github.shyiko.rook.api.event.RowsMutationReplicationEvent;
+import com.github.shyiko.rook.api.event.TXReplicationEvent;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,27 +52,27 @@ public class QueryCacheSynchronizer implements ReplicationEventListener {
 
     @Override
     public void onEvent(ReplicationEvent event) {
-        Collection<RowReplicationEvent> events = null;
-        if (event instanceof CompositeReplicationEvent) {
-            Collection<ReplicationEvent> replicationEvents = ((CompositeReplicationEvent) event).getEvents();
-            events = new ArrayList<RowReplicationEvent>(replicationEvents.size());
+        Collection<RowsMutationReplicationEvent> events = null;
+        if (event instanceof TXReplicationEvent) {
+            Collection<ReplicationEvent> replicationEvents = ((TXReplicationEvent) event).getEvents();
+            events = new ArrayList<RowsMutationReplicationEvent>(replicationEvents.size());
             for (ReplicationEvent replicationEvent : replicationEvents) {
-                if (replicationEvent instanceof RowReplicationEvent) {
-                    events.add((RowReplicationEvent) replicationEvent);
+                if (replicationEvent instanceof RowsMutationReplicationEvent) {
+                    events.add((RowsMutationReplicationEvent) replicationEvent);
                 }
             }
-        } else if (event instanceof RowReplicationEvent) {
-            events = new LinkedList<RowReplicationEvent>();
-            events.add((RowReplicationEvent) event);
+        } else if (event instanceof RowsMutationReplicationEvent) {
+            events = new LinkedList<RowsMutationReplicationEvent>();
+            events.add((RowsMutationReplicationEvent) event);
         }
         if (events != null && !events.isEmpty()) {
             invalidateAffectedQuerySpaces(events);
         }
     }
 
-    private void invalidateAffectedQuerySpaces(Collection<RowReplicationEvent> events) {
+    private void invalidateAffectedQuerySpaces(Collection<RowsMutationReplicationEvent> events) {
         Set<String> spacesToInvalidate = new HashSet<String>();
-        for (RowReplicationEvent event : events) {
+        for (RowsMutationReplicationEvent event : events) {
             Collection<EvictionTarget> evictionTargets = synchronizationContext.getEvictionTargets(
                     event.getSchema().toLowerCase() + "." + event.getTable().toLowerCase());
             for (EvictionTarget evictionTarget : evictionTargets) {

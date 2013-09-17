@@ -13,6 +13,7 @@
     <artifactId>rook-api</artifactId>
 
     <dependencies>
+        <!-- todo: remove it -->
         <dependency>
             <groupId>commons-lang</groupId>
             <artifactId>commons-lang</artifactId>

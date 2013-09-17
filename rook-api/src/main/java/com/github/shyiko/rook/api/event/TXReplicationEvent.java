@@ -15,26 +15,35 @@
  */
 package com.github.shyiko.rook.api.event;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-
-import java.io.Serializable;
+import java.util.List;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public class InsertRowReplicationEvent extends RowReplicationEvent {
+public class TXReplicationEvent implements ReplicationEvent {
 
-    public InsertRowReplicationEvent(String database, String table, Serializable[] values) {
-        super(database, table, values);
+    private List<ReplicationEvent> events;
+
+    public TXReplicationEvent(List<ReplicationEvent> events) {
+        this.events = events;
+    }
+
+    public List<ReplicationEvent> getEvents() {
+        return events;
     }
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-            append("schema", schema).
-            append("table", table).
-            append("values", values).
-            toString();
+        final StringBuilder sb = new StringBuilder();
+        sb.append("TXReplicationEvent");
+        sb.append("{events=[");
+        for (ReplicationEvent event : events) {
+            sb.append("\n    ").append(event).append(",");
+        }
+        if (!events.isEmpty()) {
+            sb.replace(sb.length() - 1, sb.length(), "\n");
+        }
+        sb.append("]}");
+        return sb.toString();
     }
 }

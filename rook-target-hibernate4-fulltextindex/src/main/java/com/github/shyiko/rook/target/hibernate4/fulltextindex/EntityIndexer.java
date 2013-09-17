@@ -15,12 +15,12 @@
  */
 package com.github.shyiko.rook.target.hibernate4.fulltextindex;
 
-import java.io.Serializable;
+import java.util.Collection;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 public interface EntityIndexer {
 
-    void index(Class entityClass, Serializable id);
+    void index(Collection<Entity> entities);
 }

@@ -18,21 +18,22 @@ package com.github.shyiko.rook.source.mysql;
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.event.DeleteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.Event;
+import com.github.shyiko.mysql.binlog.event.EventType;
+import com.github.shyiko.mysql.binlog.event.QueryEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.github.shyiko.rook.api.ReplicationEventListener;
 import com.github.shyiko.rook.api.ReplicationStream;
-import com.github.shyiko.rook.api.event.CompositeReplicationEvent;
-import com.github.shyiko.rook.api.event.DeleteRowReplicationEvent;
-import com.github.shyiko.rook.api.event.InsertRowReplicationEvent;
+import com.github.shyiko.rook.api.event.DeleteRowsReplicationEvent;
+import com.github.shyiko.rook.api.event.InsertRowsReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
-import com.github.shyiko.rook.api.event.UpdateRowReplicationEvent;
+import com.github.shyiko.rook.api.event.TXReplicationEvent;
+import com.github.shyiko.rook.api.event.UpdateRowsReplicationEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -57,6 +58,8 @@ public class MySQLReplicationStream implements ReplicationStream {
 
     private final List<ReplicationEventListener> listeners = new LinkedList<ReplicationEventListener>();
 
+    private volatile boolean groupEventsByTX = true;
+
     public MySQLReplicationStream(String username, String password) {
         this("localhost", 3306, username, password);
     }
@@ -66,6 +69,10 @@ public class MySQLReplicationStream implements ReplicationStream {
         this.port = port;
         this.username = username;
         this.password = password;
+    }
+
+    public void setGroupEventsByTX(boolean groupEventsByTX) {
+        this.groupEventsByTX = groupEventsByTX;
     }
 
     @Override
@@ -84,7 +91,6 @@ public class MySQLReplicationStream implements ReplicationStream {
         }
         binaryLogClient = new BinaryLogClient(hostname, port, username, password);
         binaryLogClient.registerEventListener(new DelegatingEventListener());
-        // todo: bind this.disconnect() to binaryLogClient disconnect event
         return binaryLogClient;
     }
 
@@ -127,14 +133,6 @@ public class MySQLReplicationStream implements ReplicationStream {
         }
     }
 
-    private void notifyListeners(List<ReplicationEvent> events) {
-        int numberOfEvents = events.size();
-        if (numberOfEvents != 0) {
-            notifyListeners(numberOfEvents == 1 ? events.get(0) :
-                    new CompositeReplicationEvent(events));
-        }
-    }
-
     private void notifyListeners(ReplicationEvent event) {
         synchronized (listeners) {
             for (ReplicationEventListener listener : listeners) {
@@ -152,11 +150,14 @@ public class MySQLReplicationStream implements ReplicationStream {
     private final class DelegatingEventListener implements BinaryLogClient.EventListener {
 
         private final Map<Long, TableMapEventData> tablesById = new HashMap<Long, TableMapEventData>();
+        private final List<ReplicationEvent> txQueue = new LinkedList<ReplicationEvent>();
+        private boolean transactionInProgress;
 
         @Override
         public void onEvent(Event event) {
             // todo: do something about schema changes
-            switch (event.getHeader().getEventType()) {
+            EventType eventType = event.getHeader().getEventType();
+            switch (eventType) {
                 case TABLE_MAP:
                     TableMapEventData tableMapEventData = event.getData();
                     tablesById.put(tableMapEventData.getTableId(), tableMapEventData);
@@ -176,7 +177,22 @@ public class MySQLReplicationStream implements ReplicationStream {
                 case EXT_DELETE_ROWS:
                     handleDeleteRowsEvent(event);
                     break;
-                // todo: InTransactionReplicationEvent
+                case QUERY:
+                    if (groupEventsByTX) {
+                        QueryEventData queryEventData = event.getData();
+                        String query = queryEventData.getSql();
+                        if ("BEGIN".equals(query)) {
+                            transactionInProgress = true;
+                        }
+                    }
+                    break;
+                case XID:
+                    if (groupEventsByTX) {
+                        notifyListeners(new TXReplicationEvent(new ArrayList<ReplicationEvent>(txQueue)));
+                        txQueue.clear();
+                        transactionInProgress = false;
+                    }
+                    break;
                 default:
                     // ignore
             }
@@ -185,37 +201,30 @@ public class MySQLReplicationStream implements ReplicationStream {
         private void handleWriteRowsEvent(Event event) {
             WriteRowsEventData eventData = event.getData();
             TableMapEventData tableMapEvent = tablesById.get(eventData.getTableId());
-            List<Serializable[]> rows = eventData.getRows();
-            List<ReplicationEvent> replicationEvents = new ArrayList<ReplicationEvent>(rows.size());
-            for (Serializable[] row : rows) {
-                replicationEvents.add(new InsertRowReplicationEvent(tableMapEvent.getDatabase(),
-                        tableMapEvent.getTable(), row));
-            }
-            notifyListeners(replicationEvents);
+            enqueue(new InsertRowsReplicationEvent(tableMapEvent.getDatabase(),
+                tableMapEvent.getTable(), eventData.getRows()));
         }
 
         private void handleUpdateRowsEvent(Event event) {
             UpdateRowsEventData eventData = event.getData();
             TableMapEventData tableMapEvent = tablesById.get(eventData.getTableId());
-            List<Map.Entry<Serializable[], Serializable[]>> rows = eventData.getRows();
-            List<ReplicationEvent> replicationEvents = new ArrayList<ReplicationEvent>(rows.size());
-            for (Map.Entry<Serializable[], Serializable[]> row : rows) {
-                replicationEvents.add(new UpdateRowReplicationEvent(tableMapEvent.getDatabase(),
-                        tableMapEvent.getTable(), row.getKey(), row.getValue()));
-            }
-            notifyListeners(replicationEvents);
+            enqueue(new UpdateRowsReplicationEvent(tableMapEvent.getDatabase(),
+                tableMapEvent.getTable(), eventData.getRows()));
         }
 
         private void handleDeleteRowsEvent(Event event) {
             DeleteRowsEventData eventData = event.getData();
             TableMapEventData tableMapEvent = tablesById.get(eventData.getTableId());
-            List<Serializable[]> rows = eventData.getRows();
-            List<ReplicationEvent> replicationEvents = new ArrayList<ReplicationEvent>(rows.size());
-            for (Serializable[] row : rows) {
-                replicationEvents.add(new DeleteRowReplicationEvent(tableMapEvent.getDatabase(),
-                        tableMapEvent.getTable(), row));
+            enqueue(new DeleteRowsReplicationEvent(tableMapEvent.getDatabase(),
+                tableMapEvent.getTable(), eventData.getRows()));
+        }
+
+        private void enqueue(ReplicationEvent event) {
+            if (groupEventsByTX && transactionInProgress) {
+                txQueue.add(event);
+            } else {
+                notifyListeners(event);
             }
-            notifyListeners(replicationEvents);
         }
 
     }

@@ -17,6 +17,7 @@ package com.github.shyiko.rook.it.h4ftiom;
 
 import com.github.shyiko.rook.api.ReplicationEventListener;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
+import com.github.shyiko.rook.api.event.TXReplicationEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,10 +31,24 @@ public class CountDownReplicationListener implements ReplicationEventListener {
 
     private final Map<Class<? extends ReplicationEvent>, AtomicInteger> countersByDataClass =
         new HashMap<Class<? extends ReplicationEvent>, AtomicInteger>();
+    private boolean expandTXReplicationEvent = true;
+
+    public boolean isExpandTXReplicationEvent() {
+        return expandTXReplicationEvent;
+    }
+
+    public void setExpandTXReplicationEvent(boolean expandTXReplicationEvent) {
+        this.expandTXReplicationEvent = expandTXReplicationEvent;
+    }
 
     @Override
     public void onEvent(ReplicationEvent event) {
         incrementCounter(getCounter(event.getClass()));
+        if (event instanceof TXReplicationEvent) {
+            for (ReplicationEvent nestedEvent : ((TXReplicationEvent) event).getEvents()) {
+                incrementCounter(getCounter(nestedEvent.getClass()));
+            }
+        }
     }
 
     private AtomicInteger getCounter(Class<? extends ReplicationEvent> key) {

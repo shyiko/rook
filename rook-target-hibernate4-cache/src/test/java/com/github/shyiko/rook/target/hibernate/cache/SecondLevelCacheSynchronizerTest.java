@@ -15,7 +15,7 @@
  */
 package com.github.shyiko.rook.target.hibernate.cache;
 
-import com.github.shyiko.rook.api.event.DeleteRowReplicationEvent;
+import com.github.shyiko.rook.api.event.DeleteRowsReplicationEvent;
 import com.github.shyiko.rook.target.hibernate.cache.model.EntityWithCompositeKey;
 import com.github.shyiko.rook.target.hibernate4.cache.SecondLevelCacheSynchronizer;
 import org.hibernate.Cache;
@@ -61,7 +61,7 @@ public class SecondLevelCacheSynchronizerTest extends AbstractHibernateTest {
                 assertTrue(cache.containsEntity(EntityWithCompositeKey.class, firstEntityKey));
                 SecondLevelCacheSynchronizer secondLevelCacheSynchronizer =
                         new SecondLevelCacheSynchronizer(synchronizationContext);
-                secondLevelCacheSynchronizer.onEvent(new DeleteRowReplicationEvent("rook", "entity_with_cpk",
+                secondLevelCacheSynchronizer.onEvent(new DeleteRowsReplicationEvent("rook", "entity_with_cpk",
                         new Serializable[] {2L, 1L}));
                 assertFalse(cache.containsEntity(EntityWithCompositeKey.class, firstEntityKey));
                 assertTrue(cache.containsEntity(EntityWithCompositeKey.class, secondEntityKey));

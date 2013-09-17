@@ -16,31 +16,19 @@
 package com.github.shyiko.rook.api.event;
 
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public abstract class RowReplicationEvent implements ReplicationEvent {
+public class InsertRowsReplicationEvent extends RowsMutationReplicationEvent<List<Serializable[]>> {
 
-    protected String schema;
-    protected String table;
-    protected Serializable[] values;
-
-    protected RowReplicationEvent(String schema, String table, Serializable[] values) {
-        this.schema = schema;
-        this.table = table;
-        this.values = values;
+    public InsertRowsReplicationEvent(String database, String table, List<Serializable[]> rows) {
+        super(database, table, rows);
     }
 
-    public String getSchema() {
-        return schema;
-    }
-
-    public String getTable() {
-        return table;
-    }
-
-    public Serializable[] getValues() {
-        return values;
+    public InsertRowsReplicationEvent(String database, String table, Serializable[] row) {
+        super(database, table, Arrays.asList(new Serializable[][]{row}));
     }
 }

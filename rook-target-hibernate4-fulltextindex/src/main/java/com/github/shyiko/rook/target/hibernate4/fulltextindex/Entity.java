@@ -13,32 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.shyiko.rook.api.event;
+package com.github.shyiko.rook.target.hibernate4.fulltextindex;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-
-import java.util.Collection;
+import java.io.Serializable;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public class CompositeReplicationEvent implements ReplicationEvent {
+public class Entity {
 
-    private Collection<ReplicationEvent> events;
+    private final Class entityClass;
+    private final Serializable id;
 
-    public CompositeReplicationEvent(Collection<ReplicationEvent> events) {
-        this.events = events;
+    public Entity(Class entityClass, Serializable id) {
+        this.entityClass = entityClass;
+        this.id = id;
     }
 
-    public Collection<ReplicationEvent> getEvents() {
-        return events;
+    public Class getEntityClass() {
+        return entityClass;
     }
 
-    @Override
-    public String toString() {
-        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-                append("events", events).
-                toString();
+    public Serializable getId() {
+        return id;
     }
+
 }

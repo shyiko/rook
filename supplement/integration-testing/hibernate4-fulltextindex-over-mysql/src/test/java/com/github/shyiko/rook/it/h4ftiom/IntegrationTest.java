@@ -16,14 +16,15 @@
 package com.github.shyiko.rook.it.h4ftiom;
 
 import com.github.shyiko.rook.api.ReplicationEventListener;
-import com.github.shyiko.rook.api.event.DeleteRowReplicationEvent;
-import com.github.shyiko.rook.api.event.InsertRowReplicationEvent;
+import com.github.shyiko.rook.api.event.DeleteRowsReplicationEvent;
+import com.github.shyiko.rook.api.event.InsertRowsReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
-import com.github.shyiko.rook.api.event.UpdateRowReplicationEvent;
+import com.github.shyiko.rook.api.event.UpdateRowsReplicationEvent;
 import com.github.shyiko.rook.it.h4ftiom.model.OneToManyEntity;
 import com.github.shyiko.rook.it.h4ftiom.model.RootEntity;
 import com.github.shyiko.rook.source.mysql.MySQLReplicationStream;
 import com.github.shyiko.rook.target.hibernate4.fulltextindex.DefaultEntityIndexer;
+import com.github.shyiko.rook.target.hibernate4.fulltextindex.Entity;
 import com.github.shyiko.rook.target.hibernate4.fulltextindex.EntityIndexer;
 import com.github.shyiko.rook.target.hibernate4.fulltextindex.FullTextIndexSynchronizer;
 import org.apache.lucene.search.Query;
@@ -46,7 +47,6 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Serializable;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -144,10 +144,21 @@ public class IntegrationTest {
                     private EntityIndexer entityIndexer = new DefaultEntityIndexer(sessionFactory);
 
                     @Override
-                    public void index(Class entityClass, Serializable id) {
-                        entityIndexer.index(entityClass, id);
+                    public void index(Collection<Entity> entities) {
+                        entityIndexer.index(entities);
+                        StringBuilder sb = new StringBuilder("[");
+                        if (!entities.isEmpty()) {
+                            for (Entity entity : entities) {
+                                sb.append(entity.getEntityClass().getSimpleName()).
+                                   append("#").
+                                   append(entity.getId()).
+                                   append(", ");
+                            }
+                            sb.replace(sb.length() - 2, sb.length(), "");
+                        }
+                        sb.append("]");
                         if (logger.isDebugEnabled()) {
-                            logger.debug("Indexed " + entityClass.getSimpleName() + "#" + id);
+                            logger.debug("Indexed " + sb.toString());
                         }
                     }
                 })
@@ -176,7 +187,7 @@ public class IntegrationTest {
                 session.persist(new RootEntity("Gryffindor"));
             }
         });
-        countDownReplicationListener.waitFor(InsertRowReplicationEvent.class, 8, DEFAULT_TIMEOUT);
+        countDownReplicationListener.waitFor(InsertRowsReplicationEvent.class, 8, DEFAULT_TIMEOUT);
         slaveContext.execute(new Callback<Session>() {
 
             @Override
@@ -202,7 +213,7 @@ public class IntegrationTest {
                 session.createQuery("delete from RootEntity where name = 'Gryffindor'").executeUpdate();
             }
         });
-        countDownReplicationListener.waitFor(DeleteRowReplicationEvent.class, 1, DEFAULT_TIMEOUT);
+        countDownReplicationListener.waitFor(DeleteRowsReplicationEvent.class, 1, DEFAULT_TIMEOUT);
         slaveContext.execute(new Callback<Session>() {
 
             @Override
@@ -222,7 +233,7 @@ public class IntegrationTest {
                     executeUpdate();
             }
         });
-        countDownReplicationListener.waitFor(UpdateRowReplicationEvent.class, 1, DEFAULT_TIMEOUT);
+        countDownReplicationListener.waitFor(UpdateRowsReplicationEvent.class, 1, DEFAULT_TIMEOUT);
         slaveContext.execute(new Callback<Session>() {
 
             @Override

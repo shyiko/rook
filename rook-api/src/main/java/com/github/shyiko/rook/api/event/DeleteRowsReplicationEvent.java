@@ -15,26 +15,20 @@
  */
 package com.github.shyiko.rook.api.event;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public class DeleteRowReplicationEvent extends RowReplicationEvent {
+public class DeleteRowsReplicationEvent extends RowsMutationReplicationEvent<List<Serializable[]>> {
 
-    public DeleteRowReplicationEvent(String database, String table, Serializable[] values) {
-        super(database, table, values);
+    public DeleteRowsReplicationEvent(String database, String table, List<Serializable[]> rows) {
+        super(database, table, rows);
     }
 
-    @Override
-    public String toString() {
-        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-            append("schema", schema).
-            append("table", table).
-            append("values", values).
-            toString();
+    public DeleteRowsReplicationEvent(String database, String table, Serializable[] row) {
+        super(database, table, Arrays.asList(new Serializable[][] {row}));
     }
 }

@@ -22,6 +22,7 @@ import org.hibernate.search.FullTextSession;
 import org.hibernate.search.Search;
 
 import java.io.Serializable;
+import java.util.Collection;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
@@ -34,18 +35,23 @@ public class DefaultEntityIndexer implements EntityIndexer {
         this.sessionFactory = sessionFactory;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public void index(Class entityClass, Serializable id) {
+    public void index(Collection<Entity> entities) {
         Session session = sessionFactory.openSession();
         try {
-            Object entity = session.get(entityClass, id);
             FullTextSession fullTextSession = Search.getFullTextSession(session);
             Transaction tx = fullTextSession.beginTransaction();
             try {
-                if (entity != null) {
-                    fullTextSession.index(entity);
-                } else {
-                    fullTextSession.purge(entityClass, id);
+                for (Entity entity : entities) {
+                    Class entityClass = entity.getEntityClass();
+                    Serializable id = entity.getId();
+                    Object obj = session.get(entityClass, id);
+                    if (obj != null) {
+                        fullTextSession.index(obj);
+                    } else {
+                        fullTextSession.purge(entityClass, id);
+                    }
                 }
                 tx.commit();
             } catch (RuntimeException e) {
@@ -55,4 +61,5 @@ public class DefaultEntityIndexer implements EntityIndexer {
             session.close();
         }
     }
+
 }

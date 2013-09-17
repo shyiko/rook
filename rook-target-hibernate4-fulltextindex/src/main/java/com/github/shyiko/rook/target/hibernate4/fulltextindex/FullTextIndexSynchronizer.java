@@ -16,9 +16,12 @@
 package com.github.shyiko.rook.target.hibernate4.fulltextindex;
 
 import com.github.shyiko.rook.api.ReplicationEventListener;
-import com.github.shyiko.rook.api.event.CompositeReplicationEvent;
+import com.github.shyiko.rook.api.event.DeleteRowsReplicationEvent;
+import com.github.shyiko.rook.api.event.InsertRowsReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
-import com.github.shyiko.rook.api.event.RowReplicationEvent;
+import com.github.shyiko.rook.api.event.RowsMutationReplicationEvent;
+import com.github.shyiko.rook.api.event.TXReplicationEvent;
+import com.github.shyiko.rook.api.event.UpdateRowsReplicationEvent;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -27,11 +30,12 @@ import org.hibernate.mapping.Table;
 import org.hibernate.search.annotations.Indexed;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -56,19 +60,6 @@ public class FullTextIndexSynchronizer implements ReplicationEventListener {
         loadClassMappings(configuration);
     }
 
-    @Override
-    public void onEvent(ReplicationEvent event) {
-        // todo: index on transaction commit (as per binlog)
-        if (event instanceof CompositeReplicationEvent) {
-            for (ReplicationEvent replicationEvent : ((CompositeReplicationEvent) event).getEvents()) {
-                updateIndex((RowReplicationEvent) replicationEvent);
-            }
-        } else
-        if (event instanceof RowReplicationEvent) {
-            updateIndex((RowReplicationEvent) event);
-        }
-    }
-
     private void loadClassMappings(Configuration configuration) {
         for (Iterator<PersistentClass> iterator = configuration.getClassMappings(); iterator.hasNext(); ) {
             PersistentClass persistentClass = iterator.next();
@@ -82,23 +73,6 @@ public class FullTextIndexSynchronizer implements ReplicationEventListener {
         }
     }
 
-    private void updateIndex(RowReplicationEvent event) {
-        String qualifiedName = event.getSchema().toLowerCase() + "." + event.getTable().toLowerCase();
-        Collection<EvictionTarget> evictionTargets = getEvictionTargets(qualifiedName);
-        for (EvictionTarget evictionTarget : evictionTargets) {
-            PrimaryKey primaryKey = evictionTarget.getPrimaryKey();
-            Class entityClass = primaryKey.getEntityClass();
-            Serializable id = primaryKey.getIdentifier(event.getValues());
-            entityIndexer.index(entityClass, id);
-        }
-    }
-
-    // todo: refactor out
-    private Collection<EvictionTarget> getEvictionTargets(String table) {
-        Collection<EvictionTarget> evictionTargets = targetsByTable.get(table.toLowerCase());
-        return evictionTargets == null ? Collections.<EvictionTarget>emptyList() : evictionTargets;
-    }
-
     private Collection<EvictionTarget> evictionTargetsOf(Table table) {
         String key = schema + "." + table.getName().toLowerCase();
         Collection<EvictionTarget> evictionTargets = targetsByTable.get(key);
@@ -107,4 +81,64 @@ public class FullTextIndexSynchronizer implements ReplicationEventListener {
         }
         return evictionTargets;
     }
+
+    @Override
+    public void onEvent(ReplicationEvent event) {
+        Collection<RowsMutationReplicationEvent> events = null;
+        if (event instanceof TXReplicationEvent) {
+            Collection<ReplicationEvent> replicationEvents = ((TXReplicationEvent) event).getEvents();
+            events = new ArrayList<RowsMutationReplicationEvent>(replicationEvents.size());
+            for (ReplicationEvent replicationEvent : replicationEvents) {
+                if (replicationEvent instanceof RowsMutationReplicationEvent) {
+                    events.add((RowsMutationReplicationEvent) replicationEvent);
+                }
+            }
+        } else
+        if (event instanceof RowsMutationReplicationEvent) {
+            events = new LinkedList<RowsMutationReplicationEvent>();
+            events.add((RowsMutationReplicationEvent) event);
+        }
+        if (events != null && !events.isEmpty()) {
+            updateIndex(events);
+        }
+    }
+
+    private void updateIndex(Collection<RowsMutationReplicationEvent> events) {
+        List<Entity> entities = new ArrayList<Entity>();
+        for (RowsMutationReplicationEvent event : events) {
+            String qualifiedName = event.getSchema().toLowerCase() + "." + event.getTable().toLowerCase();
+            Collection<EvictionTarget> evictionTargets = targetsByTable.get(qualifiedName);
+            if (evictionTargets == null) {
+                continue;
+            }
+            for (Serializable[] row : resolveAffectedRows(event)) {
+                for (EvictionTarget evictionTarget : evictionTargets) {
+                    PrimaryKey primaryKey = evictionTarget.getPrimaryKey();
+                    Class entityClass = primaryKey.getEntityClass();
+                    Serializable id = primaryKey.getIdentifier(row);
+                    entities.add(new Entity(entityClass, id));
+                }
+            }
+        }
+        entityIndexer.index(entities);
+    }
+
+    private List<Serializable[]> resolveAffectedRows(RowsMutationReplicationEvent event) {
+        if (event instanceof InsertRowsReplicationEvent) {
+            return ((InsertRowsReplicationEvent) event).getRows();
+        }
+        if (event instanceof UpdateRowsReplicationEvent) {
+            List<Map.Entry<Serializable[], Serializable[]>> rows = ((UpdateRowsReplicationEvent) event).getRows();
+            List<Serializable[]> result = new ArrayList<Serializable[]>(rows.size());
+            for (Map.Entry<Serializable[], Serializable[]> row : rows) {
+                result.add(row.getKey());
+            }
+            return result;
+        }
+        if (event instanceof DeleteRowsReplicationEvent) {
+            return ((DeleteRowsReplicationEvent) event).getRows();
+        }
+        throw new UnsupportedOperationException("Unexpected " + event.getClass());
+    }
+
 }
