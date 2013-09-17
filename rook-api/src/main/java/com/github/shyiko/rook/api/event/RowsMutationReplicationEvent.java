@@ -15,9 +15,6 @@
  */
 package com.github.shyiko.rook.api.event;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-
 import java.util.Collection;
 
 /**
@@ -50,11 +47,13 @@ public abstract class RowsMutationReplicationEvent<T extends Collection> impleme
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-            append("schema", schema).
-            append("table", table).
-            append("rows", rows).
-            toString();
+        final StringBuilder sb = new StringBuilder();
+        sb.append("RowsMutationReplicationEvent");
+        sb.append("{schema='").append(schema).append('\'');
+        sb.append(", table='").append(table).append('\'');
+        sb.append(", rows=").append(rows);
+        sb.append('}');
+        return sb.toString();
     }
 
 }
