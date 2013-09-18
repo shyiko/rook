@@ -50,6 +50,33 @@ new MySQLReplicationStream("hostname", 3306, "username", "password").
 
 > Integration tests available at [supplement/integration-testing/hibernate4-cache-over-mysql](https://github.com/shyiko/rook/tree/master/supplement/integration-testing/hibernate4-cache-over-mysql)
 
+### Update of FT index with Hibernate 4 Search in response to the replication events (on MySQL)
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>com.github.shyiko.rook</groupId>
+        <artifactId>rook-source-mysql</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+        <groupId>com.github.shyiko.rook</groupId>
+        <artifactId>rook-target-hibernate4-fulltextindex</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </dependency>
+</dependencies>
+```
+
+```java
+org.hibernate.cfg.Configuration configuration = ...
+org.hibernate.SessionFactory sessionFactory = ...
+new MySQLReplicationStream("hostname", 3306, "username", "password").
+    registerListener(new FullTextIndexSynchronizer(configuration, sessionFactory)).
+    connect();
+```
+
+> Integration tests available at [supplement/integration-testing/hibernate4-fulltextindex-over-mysql](https://github.com/shyiko/rook/tree/master/supplement/integration-testing/hibernate4-fulltextindex-over-mysql)
+
 ## License
 
 [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
