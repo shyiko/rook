@@ -15,6 +15,10 @@
  */
 package com.github.shyiko.rook.it.h4com;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
+import com.github.shyiko.mysql.binlog.event.Event;
+import com.github.shyiko.mysql.binlog.event.EventType;
+import com.github.shyiko.mysql.binlog.event.QueryEventData;
 import com.github.shyiko.rook.api.ReplicationEventListener;
 import com.github.shyiko.rook.api.event.DeleteRowsReplicationEvent;
 import com.github.shyiko.rook.api.event.InsertRowsReplicationEvent;
@@ -56,6 +60,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -74,15 +79,34 @@ public class IntegrationTest {
 
     @BeforeClass
     public void setUp() throws Exception {
-        Class.forName("com.mysql.jdbc.Driver");
-        recreateDatabaseForProfiles("master", "master-sdb");
-        // todo: make sure changes got replicated
         ResourceBundle bundle = ResourceBundle.getBundle("slave");
         String dsURL = bundle.getString("hibernate.connection.url");
         URI uri = new URI("schema" + dsURL.substring(dsURL.indexOf("://")));
+        final CountDownLatch latchForCreateDatabase = new CountDownLatch(2);
         replicationStream = new MySQLReplicationStream(uri.getHost(), uri.getPort(),
-            bundle.getString("hibernate.connection.username"), bundle.getString("hibernate.connection.password"));
+            bundle.getString("hibernate.connection.username"), bundle.getString("hibernate.connection.password")) {
+
+            @Override
+            protected void configureBinaryLogClient(final BinaryLogClient binaryLogClient) {
+                binaryLogClient.registerEventListener(new BinaryLogClient.EventListener() {
+
+                    @Override
+                    public void onEvent(Event event) {
+                        if (event.getHeader().getEventType() == EventType.QUERY &&
+                            ((QueryEventData) event.getData()).getSql().toLowerCase().contains("create database")) {
+                            latchForCreateDatabase.countDown();
+                            if (latchForCreateDatabase.getCount() == 0) {
+                                binaryLogClient.unregisterEventListener(this);
+                            }
+                        }
+                    }
+                });
+            }
+        };
         replicationStream.connect(DEFAULT_TIMEOUT);
+        Class.forName("com.mysql.jdbc.Driver");
+        recreateDatabaseForProfiles("master", "master-sdb");
+        assertTrue(latchForCreateDatabase.await(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS));
     }
 
     private void recreateDatabaseForProfiles(String... profiles) throws Exception {
