@@ -91,7 +91,12 @@ public class MySQLReplicationStream implements ReplicationStream {
         }
         binaryLogClient = new BinaryLogClient(hostname, port, username, password);
         binaryLogClient.registerEventListener(new DelegatingEventListener());
+        configureBinaryLogClient(binaryLogClient);
         return binaryLogClient;
+    }
+
+    protected void configureBinaryLogClient(BinaryLogClient binaryLogClient) {
+        // template method
     }
 
     @Override
