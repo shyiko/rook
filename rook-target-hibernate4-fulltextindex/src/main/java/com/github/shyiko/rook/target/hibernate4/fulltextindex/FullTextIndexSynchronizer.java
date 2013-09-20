@@ -120,7 +120,9 @@ public class FullTextIndexSynchronizer implements ReplicationEventListener {
                 }
             }
         }
-        entityIndexer.index(entities);
+        if (!entities.isEmpty()) {
+            entityIndexer.index(entities);
+        }
     }
 
     private List<Serializable[]> resolveAffectedRows(RowsMutationReplicationEvent event) {
