@@ -20,6 +20,8 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.search.FullTextSession;
 import org.hibernate.search.Search;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.Collection;
@@ -28,6 +30,8 @@ import java.util.Collection;
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 public class DefaultEntityIndexer implements EntityIndexer {
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final SessionFactory sessionFactory;
 
@@ -59,6 +63,14 @@ public class DefaultEntityIndexer implements EntityIndexer {
             }
         } finally {
             session.close();
+        }
+        if (logger.isDebugEnabled()) {
+            StringBuilder sb = new StringBuilder("[");
+            for (Entity entity : entities) {
+                sb.append(entity.getEntityClass().getSimpleName()).append("#").append(entity.getId()).append(", ");
+            }
+            sb.replace(sb.length() - 2, sb.length(), "]");
+            logger.debug("Indexed " + sb.toString());
         }
     }
 

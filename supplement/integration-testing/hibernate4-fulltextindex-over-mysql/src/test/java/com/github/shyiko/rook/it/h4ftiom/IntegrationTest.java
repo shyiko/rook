@@ -163,37 +163,13 @@ public class IntegrationTest {
     }
 
     private void testFullTextIndexUpdate(final boolean enableFTIS) throws Exception {
-        ExecutionContext masterContext = ExecutionContextHolder.get("master");
-        ExecutionContext slaveContext = ExecutionContextHolder.get("slave");
+        ExecutionContext masterContext = ExecutionContextHolder.get("master"),
+            slaveContext = ExecutionContextHolder.get("slave");
         if (enableFTIS) {
-            final SessionFactory sessionFactory = slaveContext.getSessionFactory();
+            SessionFactory sessionFactory = slaveContext.getSessionFactory();
             replicationStream.registerListener(new FullTextIndexSynchronizer(
-                slaveContext.getConfiguration(),
-                sessionFactory,
-                new EntityIndexer() {
-
-                    private EntityIndexer entityIndexer = new DefaultEntityIndexer(sessionFactory);
-
-                    @Override
-                    public void index(Collection<Entity> entities) {
-                        entityIndexer.index(entities);
-                        StringBuilder sb = new StringBuilder("[");
-                        if (!entities.isEmpty()) {
-                            for (Entity entity : entities) {
-                                sb.append(entity.getEntityClass().getSimpleName()).
-                                   append("#").
-                                   append(entity.getId()).
-                                   append(", ");
-                            }
-                            sb.replace(sb.length() - 2, sb.length(), "");
-                        }
-                        sb.append("]");
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Indexed " + sb.toString());
-                        }
-                    }
-                })
-            );
+                slaveContext.getConfiguration(), sessionFactory, new DefaultEntityIndexer(sessionFactory)
+            ));
         }
         replicationStream.registerListener(countDownReplicationListener = new CountDownReplicationListener());
         testFullTextIndexUpdateOnInsert(masterContext, slaveContext, enableFTIS);
