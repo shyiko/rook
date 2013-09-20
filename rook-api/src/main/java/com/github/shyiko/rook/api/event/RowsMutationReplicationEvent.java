@@ -23,9 +23,9 @@ import java.util.Collection;
  */
 public abstract class RowsMutationReplicationEvent<T extends Collection> implements ReplicationEvent {
 
-    private final String schema;
-    private final String table;
-    private final T rows;
+    protected final String schema;
+    protected final String table;
+    protected final T rows;
 
     protected RowsMutationReplicationEvent(String schema, String table, T rows) {
         this.schema = schema;
@@ -44,16 +44,4 @@ public abstract class RowsMutationReplicationEvent<T extends Collection> impleme
     public T getRows() {
         return rows;
     }
-
-    @Override
-    public String toString() {
-        final StringBuilder sb = new StringBuilder();
-        sb.append("RowsMutationReplicationEvent");
-        sb.append("{schema='").append(schema).append('\'');
-        sb.append(", table='").append(table).append('\'');
-        sb.append(", rows=").append(rows);
-        sb.append('}');
-        return sb.toString();
-    }
-
 }

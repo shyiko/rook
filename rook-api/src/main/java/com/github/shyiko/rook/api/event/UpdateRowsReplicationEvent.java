@@ -38,4 +38,27 @@ public class UpdateRowsReplicationEvent extends RowsMutationReplicationEvent<Lis
         super(database, table, Arrays.<Map.Entry<Serializable[], Serializable[]>>asList(
             new AbstractMap.SimpleEntry<Serializable[], Serializable[]>(previousValues, values)));
     }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("UpdateRowsReplicationEvent");
+        sb.append("{schema='").append(schema).append('\'');
+        sb.append(", table='").append(table).append('\'');
+        sb.append(", rows=[");
+        if (!rows.isEmpty()) {
+            for (Map.Entry<Serializable[], Serializable[]> row : rows) {
+                sb.append("{").
+                   append(Arrays.toString(row.getKey())).
+                   append("->").
+                   append(Arrays.toString(row.getValue())).
+                   append("}, ");
+            }
+            int length = sb.length();
+            sb.replace(length - 2, length, "");
+        }
+        sb.append("]}");
+        return sb.toString();
+    }
+
 }

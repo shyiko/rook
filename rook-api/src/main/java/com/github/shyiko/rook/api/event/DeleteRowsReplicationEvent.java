@@ -31,4 +31,23 @@ public class DeleteRowsReplicationEvent extends RowsMutationReplicationEvent<Lis
     public DeleteRowsReplicationEvent(String database, String table, Serializable[] row) {
         super(database, table, Arrays.asList(new Serializable[][] {row}));
     }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("DeleteRowsReplicationEvent");
+        sb.append("{schema='").append(schema).append('\'');
+        sb.append(", table='").append(table).append('\'');
+        sb.append(", rows=[");
+        if (!rows.isEmpty()) {
+            for (Serializable[] row : rows) {
+                sb.append(Arrays.toString(row)).append(", ");
+            }
+            int length = sb.length();
+            sb.replace(length - 2, length, "");
+        }
+        sb.append("]}");
+        return sb.toString();
+    }
+
 }
