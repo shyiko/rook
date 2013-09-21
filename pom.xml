@@ -86,7 +86,6 @@
                     <failsOnError>true</failsOnError>
                     <configLocation>supplement/codequality/checkstyle.xml</configLocation>
                     <headerLocation>supplement/codequality/license.header</headerLocation>
-                    <excludes>**/com/google/code/or/**</excludes>
                     <consoleOutput>true</consoleOutput>
                 </configuration>
                 <executions>
