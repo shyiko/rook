@@ -10,7 +10,8 @@
         <property name="search.autoregister_listeners">true</property>
         <property name="search.default.directory_provider">ram</property>
         <mapping class="com.github.shyiko.rook.it.h4ftiom.model.RootEntity"/>
-        <mapping class="com.github.shyiko.rook.it.h4ftiom.model.OneToManyEntity"/>
+        <mapping class="com.github.shyiko.rook.it.h4ftiom.model.ManyToManyEntity"/>
+        <mapping class="com.github.shyiko.rook.it.h4ftiom.model.JoinedOneToManyEntity"/>
     </session-factory>
 
 </hibernate-configuration>

@@ -16,6 +16,8 @@
 package com.github.shyiko.rook.it.h4ftiom.model;
 
 import org.hibernate.annotations.Cascade;
+import org.hibernate.annotations.LazyCollection;
+import org.hibernate.annotations.LazyCollectionOption;
 import org.hibernate.search.annotations.Field;
 import org.hibernate.search.annotations.Indexed;
 import org.hibernate.search.annotations.IndexedEmbedded;
@@ -25,7 +27,10 @@ import javax.persistence.Column;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.ManyToMany;
 import javax.persistence.OneToMany;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -42,11 +47,19 @@ public class RootEntity {
     @Column
     private String name;
     @IndexedEmbedded
+    @LazyCollection(LazyCollectionOption.TRUE)
+    @Cascade(org.hibernate.annotations.CascadeType.SAVE_UPDATE)
+    @ManyToMany(cascade = {
+        CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.DETACH
+    }, fetch = FetchType.LAZY, mappedBy = "rootEntities")
+    private Set<ManyToManyEntity> manyToManyEntities = new HashSet<ManyToManyEntity>();
+    @IndexedEmbedded
+    @LazyCollection(LazyCollectionOption.TRUE)
     @Cascade(org.hibernate.annotations.CascadeType.SAVE_UPDATE)
     @OneToMany(cascade = {
         CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.DETACH
-    }, fetch = FetchType.LAZY)
-    private Set<OneToManyEntity> oneToManyEntities;
+    }, fetch = FetchType.LAZY, mappedBy = "rootEntity")
+    private Set<JoinedOneToManyEntity> joinedOneToManyEntities = new HashSet<JoinedOneToManyEntity>();
 
     public RootEntity() {
     }
@@ -55,9 +68,19 @@ public class RootEntity {
         this.name = name;
     }
 
-    public RootEntity(String name, Set<OneToManyEntity> oneToManyEntities) {
+    public RootEntity(String name, Set<ManyToManyEntity> manyToManyEntities) {
+        this(name, manyToManyEntities, Collections.<JoinedOneToManyEntity>emptySet());
+    }
+
+    public RootEntity(String name, Set<ManyToManyEntity> manyToManyEntities,
+            Set<JoinedOneToManyEntity> joinedOneToManyEntities) {
         this.name = name;
-        this.oneToManyEntities = oneToManyEntities;
+        for (ManyToManyEntity manyToManyEntity : manyToManyEntities) {
+            addManyToManyEntity(manyToManyEntity);
+        }
+        for (JoinedOneToManyEntity joinedOneToManyEntity : joinedOneToManyEntities) {
+            addJoinedOneToManyEntity(joinedOneToManyEntity);
+        }
     }
 
     public String getName() {
@@ -68,11 +91,58 @@ public class RootEntity {
         this.name = name;
     }
 
-    public Set<OneToManyEntity> getOneToManyEntities() {
-        return oneToManyEntities;
+    public ManyToManyEntity getManyToManyEntityByName(String name) {
+        for (ManyToManyEntity oneToManyEntity : this.manyToManyEntities) {
+            if (name.equals(oneToManyEntity.getName())) {
+                return oneToManyEntity;
+            }
+        }
+        return null;
     }
 
-    public void setOneToManyEntities(Set<OneToManyEntity> oneToManyEntities) {
-        this.oneToManyEntities = oneToManyEntities;
+    public void addManyToManyEntity(ManyToManyEntity manyToManyEntity) {
+        this.manyToManyEntities.add(manyToManyEntity);
+        manyToManyEntity.addRootEntity(this);
     }
+
+    public void removeManyToManyEntity(ManyToManyEntity manyToManyEntity) {
+        this.manyToManyEntities.remove(manyToManyEntity);
+        manyToManyEntity.removeRootEntity(this);
+    }
+
+    public JoinedOneToManyEntity getJoinedOneToManyEntityByName(String name) {
+        for (JoinedOneToManyEntity joinedOneToManyEntity : this.joinedOneToManyEntities) {
+            if (name.equals(joinedOneToManyEntity.getName())) {
+                return joinedOneToManyEntity;
+            }
+        }
+        return null;
+    }
+
+    public void addJoinedOneToManyEntity(JoinedOneToManyEntity joinedOneToManyEntity) {
+        this.joinedOneToManyEntities.add(joinedOneToManyEntity);
+        joinedOneToManyEntity.setRootEntity(this);
+    }
+
+    public void removeJoinedOneToManyEntity(JoinedOneToManyEntity joinedOneToManyEntity) {
+        this.joinedOneToManyEntities.remove(joinedOneToManyEntity);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        RootEntity student = (RootEntity) o;
+        return name.equals(student.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return name.hashCode();
+    }
+
 }

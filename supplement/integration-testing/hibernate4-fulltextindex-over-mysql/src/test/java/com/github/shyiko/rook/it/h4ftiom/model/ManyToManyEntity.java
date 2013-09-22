@@ -15,19 +15,26 @@
  */
 package com.github.shyiko.rook.it.h4ftiom.model;
 
+import org.hibernate.annotations.LazyCollection;
+import org.hibernate.annotations.LazyCollectionOption;
+import org.hibernate.search.annotations.ContainedIn;
 import org.hibernate.search.annotations.Field;
 import org.hibernate.search.annotations.Indexed;
 
 import javax.persistence.Column;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.ManyToMany;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 @Indexed
 @javax.persistence.Entity
-public class OneToManyEntity {
+public class ManyToManyEntity {
 
     @Id
     @GeneratedValue
@@ -35,11 +42,15 @@ public class OneToManyEntity {
     @Field
     @Column(nullable = false)
     private String name;
+    @ContainedIn
+    @LazyCollection(LazyCollectionOption.TRUE)
+    @ManyToMany(fetch = FetchType.LAZY)
+    private Set<RootEntity> rootEntities = new HashSet<RootEntity>();
 
-    public OneToManyEntity() {
+    public ManyToManyEntity() {
     }
 
-    public OneToManyEntity(String name) {
+    public ManyToManyEntity(String name) {
         this.name = name;
     }
 
@@ -51,6 +62,18 @@ public class OneToManyEntity {
         this.name = name;
     }
 
+    public Set<RootEntity> getRootEntities() {
+        return rootEntities;
+    }
+
+    public void addRootEntity(RootEntity rootEntity) {
+        this.rootEntities.add(rootEntity);
+    }
+
+    public void removeRootEntity(RootEntity rootEntity) {
+        this.rootEntities.remove(rootEntity);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -59,7 +82,7 @@ public class OneToManyEntity {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        OneToManyEntity student = (OneToManyEntity) o;
+        ManyToManyEntity student = (ManyToManyEntity) o;
         return name.equals(student.name);
     }
 

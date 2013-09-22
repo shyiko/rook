@@ -24,16 +24,10 @@ import com.github.shyiko.rook.api.event.TXReplicationEvent;
 import com.github.shyiko.rook.api.event.UpdateRowsReplicationEvent;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.mapping.PersistentClass;
-import org.hibernate.mapping.Table;
-import org.hibernate.search.annotations.Indexed;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -43,43 +37,17 @@ import java.util.Map;
  */
 public class FullTextIndexSynchronizer implements ReplicationEventListener {
 
-    private final String schema;
-    private final EntityIndexer entityIndexer;
-    private final Map<String, Collection<EvictionTarget>> targetsByTable =
-        new HashMap<String, Collection<EvictionTarget>>();
+    private final SynchronizationContext synchronizationContext;
+    private final RowsMutationIndexer indexer;
 
     public FullTextIndexSynchronizer(Configuration configuration, SessionFactory sessionFactory) {
-        this(configuration, sessionFactory, new DefaultEntityIndexer(sessionFactory));
+        this(configuration, sessionFactory, new DefaultRowsMutationIndexer());
     }
 
     public FullTextIndexSynchronizer(Configuration configuration, SessionFactory sessionFactory,
-            EntityIndexer entityIndexer) {
-        this.schema = ((SessionFactoryImplementor) sessionFactory).getJdbcServices().
-            getExtractedMetaDataSupport().getConnectionCatalogName().toLowerCase();
-        this.entityIndexer = entityIndexer;
-        loadClassMappings(configuration);
-    }
-
-    private void loadClassMappings(Configuration configuration) {
-        for (Iterator<PersistentClass> iterator = configuration.getClassMappings(); iterator.hasNext(); ) {
-            PersistentClass persistentClass = iterator.next();
-            if (!persistentClass.getMappedClass().isAnnotationPresent(Indexed.class)) {
-                continue;
-            }
-            Table table = persistentClass.getTable();
-            String className = persistentClass.getClassName();
-            PrimaryKey primaryKey = new PrimaryKey(persistentClass);
-            evictionTargetsOf(table).add(new EvictionTarget(className, primaryKey, false));
-        }
-    }
-
-    private Collection<EvictionTarget> evictionTargetsOf(Table table) {
-        String key = schema + "." + table.getName().toLowerCase();
-        Collection<EvictionTarget> evictionTargets = targetsByTable.get(key);
-        if (evictionTargets == null) {
-            targetsByTable.put(key, evictionTargets = new LinkedList<EvictionTarget>());
-        }
-        return evictionTargets;
+            RowsMutationIndexer rowChangeIndexer) {
+        this.synchronizationContext = new SynchronizationContext(configuration, sessionFactory);
+        this.indexer = rowChangeIndexer;
     }
 
     @Override
@@ -104,24 +72,17 @@ public class FullTextIndexSynchronizer implements ReplicationEventListener {
     }
 
     private void updateIndex(Collection<RowsMutationReplicationEvent> events) {
-        List<Entity> entities = new ArrayList<Entity>();
+        List<RowsMutation> rowsMutations = new ArrayList<RowsMutation>();
         for (RowsMutationReplicationEvent event : events) {
             String qualifiedName = event.getSchema().toLowerCase() + "." + event.getTable().toLowerCase();
-            Collection<EvictionTarget> evictionTargets = targetsByTable.get(qualifiedName);
-            if (evictionTargets == null) {
-                continue;
-            }
-            for (Serializable[] row : resolveAffectedRows(event)) {
-                for (EvictionTarget evictionTarget : evictionTargets) {
-                    PrimaryKey primaryKey = evictionTarget.getPrimaryKey();
-                    Class entityClass = primaryKey.getEntityClass();
-                    Serializable id = primaryKey.getIdentifier(row);
-                    entities.add(new Entity(entityClass, id));
-                }
+            Collection<IndexingDirective> indexingDirectives =
+                synchronizationContext.getIndexingDirectives(qualifiedName);
+            for (IndexingDirective indexingDirective : indexingDirectives) {
+                rowsMutations.add(new RowsMutation(resolveAffectedRows(event), indexingDirective));
             }
         }
-        if (!entities.isEmpty()) {
-            entityIndexer.index(entities);
+        if (!rowsMutations.isEmpty()) {
+            indexer.index(rowsMutations, synchronizationContext);
         }
     }
 

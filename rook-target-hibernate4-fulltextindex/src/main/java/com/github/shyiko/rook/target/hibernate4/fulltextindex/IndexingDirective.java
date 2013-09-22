@@ -15,33 +15,34 @@
  */
 package com.github.shyiko.rook.target.hibernate4.fulltextindex;
 
+import java.util.Collection;
+
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public class EvictionTarget {
+public class IndexingDirective {
 
-    /**
-     * className or role depending whether target is an entity or a collection
-     */
-    private final String name;
     private final PrimaryKey primaryKey;
-    private final boolean collection;
+    private final boolean suppressSelfIndexing;
+    private final Collection<Reference> containerReferences;
 
-    public EvictionTarget(String name, PrimaryKey primaryKey, boolean collection) {
-        this.name = name;
+    public IndexingDirective(PrimaryKey primaryKey, boolean suppressSelfIndexing,
+            Collection<Reference> containerReferences) {
         this.primaryKey = primaryKey;
-        this.collection = collection;
-    }
-
-    public String getName() {
-        return name;
+        this.suppressSelfIndexing = suppressSelfIndexing;
+        this.containerReferences = containerReferences;
     }
 
     public PrimaryKey getPrimaryKey() {
         return primaryKey;
     }
 
-    public boolean isCollection() {
-        return collection;
+    public boolean isSuppressSelfIndexing() {
+        return suppressSelfIndexing;
     }
+
+    public Collection<Reference> getContainerReferences() {
+        return containerReferences;
+    }
+
 }

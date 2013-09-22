@@ -15,12 +15,27 @@
  */
 package com.github.shyiko.rook.target.hibernate4.fulltextindex;
 
-import java.util.Collection;
+import java.io.Serializable;
+import java.util.List;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public interface EntityIndexer {
+public class RowsMutation {
 
-    void index(Collection<Entity> entities);
+    private final List<Serializable[]> rows;
+    private final IndexingDirective indexingDirective;
+
+    public RowsMutation(List<Serializable[]> rows, IndexingDirective indexingDirective) {
+        this.rows = rows;
+        this.indexingDirective = indexingDirective;
+    }
+
+    public List<Serializable[]> getRows() {
+        return rows;
+    }
+
+    public IndexingDirective getIndexingDirective() {
+        return indexingDirective;
+    }
 }

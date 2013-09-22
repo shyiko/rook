@@ -24,12 +24,9 @@ import com.github.shyiko.rook.api.event.DeleteRowsReplicationEvent;
 import com.github.shyiko.rook.api.event.InsertRowsReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.UpdateRowsReplicationEvent;
-import com.github.shyiko.rook.it.h4ftiom.model.OneToManyEntity;
+import com.github.shyiko.rook.it.h4ftiom.model.ManyToManyEntity;
 import com.github.shyiko.rook.it.h4ftiom.model.RootEntity;
 import com.github.shyiko.rook.source.mysql.MySQLReplicationStream;
-import com.github.shyiko.rook.target.hibernate4.fulltextindex.DefaultEntityIndexer;
-import com.github.shyiko.rook.target.hibernate4.fulltextindex.Entity;
-import com.github.shyiko.rook.target.hibernate4.fulltextindex.EntityIndexer;
 import com.github.shyiko.rook.target.hibernate4.fulltextindex.FullTextIndexSynchronizer;
 import org.apache.lucene.search.Query;
 import org.hibernate.Session;
@@ -51,6 +48,7 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -66,6 +64,7 @@ import java.util.ResourceBundle;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
@@ -167,9 +166,8 @@ public class IntegrationTest {
             slaveContext = ExecutionContextHolder.get("slave");
         if (enableFTIS) {
             SessionFactory sessionFactory = slaveContext.getSessionFactory();
-            replicationStream.registerListener(new FullTextIndexSynchronizer(
-                slaveContext.getConfiguration(), sessionFactory, new DefaultEntityIndexer(sessionFactory)
-            ));
+            replicationStream.registerListener(new FullTextIndexSynchronizer(slaveContext.getConfiguration(),
+                sessionFactory));
         }
         replicationStream.registerListener(countDownReplicationListener = new CountDownReplicationListener());
         testFullTextIndexUpdateOnInsert(masterContext, slaveContext, enableFTIS);
@@ -183,18 +181,11 @@ public class IntegrationTest {
 
             @Override
             public void execute(Session session) {
-                session.persist(new RootEntity(
-                    "Slytherin",
-                    new HashSet<OneToManyEntity>(Arrays.asList(
-                        new OneToManyEntity("Draco Malfoy"),
-                        new OneToManyEntity("Vincent Crabbe"),
-                        new OneToManyEntity("Gregory Goyle")
-                    ))
-                ));
+                session.persist(new RootEntity("Slytherin"));
                 session.persist(new RootEntity("Gryffindor"));
             }
         });
-        countDownReplicationListener.waitFor(InsertRowsReplicationEvent.class, 8, DEFAULT_TIMEOUT);
+        countDownReplicationListener.waitFor(InsertRowsReplicationEvent.class, 2, DEFAULT_TIMEOUT);
         slaveContext.execute(new Callback<Session>() {
 
             @Override
@@ -258,6 +249,122 @@ public class IntegrationTest {
         Query luceneQuery = qb.keyword().onField(field).matching(value).createQuery();
         FullTextQuery ftsQuery = fullTextSession.createFullTextQuery(luceneQuery, RootEntity.class);
         return  (RootEntity) ftsQuery.uniqueResult();
+    }
+
+    @Test
+    public void testChangeToEmbeddedEntityDoesNotTriggerContainedReindexWithoutFTIS() throws Exception {
+        testReindexTriggerByEmbeddedEntity(false);
+    }
+
+    @Test
+    public void testChangeToEmbeddedEntityDoesTriggerContainedReindexIfFTISIsOn() throws Exception {
+        testReindexTriggerByEmbeddedEntity(true);
+    }
+
+    private void testReindexTriggerByEmbeddedEntity(final boolean enableFTIS) throws Exception {
+        ExecutionContext masterContext = ExecutionContextHolder.get("master"),
+            slaveContext = ExecutionContextHolder.get("slave");
+        if (enableFTIS) {
+            SessionFactory sessionFactory = slaveContext.getSessionFactory();
+            replicationStream.registerListener(new FullTextIndexSynchronizer(slaveContext.getConfiguration(),
+                sessionFactory));
+        }
+        replicationStream.registerListener(countDownReplicationListener = new CountDownReplicationListener());
+        final AtomicReference<Serializable> rootEntityId = new AtomicReference<Serializable>();
+        masterContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                rootEntityId.set(session.save(new RootEntity(
+                    "Slytherin",
+                    new HashSet<ManyToManyEntity>(Arrays.asList(
+                        new ManyToManyEntity("Draco Malfoy")
+                    ))
+                )));
+            }
+        });
+        countDownReplicationListener.waitFor(InsertRowsReplicationEvent.class, 3, DEFAULT_TIMEOUT);
+        slaveContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                assertTrue(enableFTIS == (searchRootEntityUsingFTI(session, "manyToManyEntities.name",
+                    "Draco Malfoy") != null));
+            }
+        });
+        testReindexTriggerByEmbeddedEntityOnInsert(masterContext, slaveContext, rootEntityId.get(), enableFTIS);
+        testReindexTriggerByEmbeddedEntityOnUpdate(masterContext, slaveContext, rootEntityId.get(), enableFTIS);
+        testReindexTriggerByEmbeddedEntityOnDelete(masterContext, slaveContext, rootEntityId.get(), enableFTIS);
+    }
+
+    private void testReindexTriggerByEmbeddedEntityOnInsert(ExecutionContext masterContext,
+            ExecutionContext slaveContext, final Serializable rootEntityId, final boolean enableFTIS)
+            throws TimeoutException, InterruptedException {
+        masterContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId);
+                rootEntity.addManyToManyEntity(new ManyToManyEntity("Vincent Crabbe"));
+                session.update(rootEntity);
+            }
+        });
+        countDownReplicationListener.waitFor(InsertRowsReplicationEvent.class, 2, DEFAULT_TIMEOUT);
+        slaveContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                assertTrue(enableFTIS == (searchRootEntityUsingFTI(session, "manyToManyEntities.name",
+                    "Vincent Crabbe") != null));
+            }
+        });
+    }
+
+    private void testReindexTriggerByEmbeddedEntityOnUpdate(ExecutionContext masterContext,
+            ExecutionContext slaveContext, final Serializable rootEntityId, final boolean enableFTIS)
+            throws TimeoutException, InterruptedException {
+        masterContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId);
+                ManyToManyEntity oneToManyEntity = rootEntity.getManyToManyEntityByName("Draco Malfoy");
+                oneToManyEntity.setName("Gregory Goyle");
+                session.update(rootEntity);
+            }
+        });
+        countDownReplicationListener.waitFor(UpdateRowsReplicationEvent.class, 1, DEFAULT_TIMEOUT);
+        slaveContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                assertTrue(enableFTIS == (searchRootEntityUsingFTI(session, "manyToManyEntities.name",
+                    "Gregory Goyle") != null));
+            }
+        });
+    }
+
+    private void testReindexTriggerByEmbeddedEntityOnDelete(ExecutionContext masterContext,
+            ExecutionContext slaveContext, final Serializable rootEntityId, final boolean enableFTIS)
+            throws TimeoutException, InterruptedException {
+        masterContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId);
+                ManyToManyEntity manyToManyEntity = rootEntity.getManyToManyEntityByName("Gregory Goyle");
+                rootEntity.removeManyToManyEntity(manyToManyEntity);
+                session.update(rootEntity);
+            }
+        });
+        countDownReplicationListener.waitFor(DeleteRowsReplicationEvent.class, 1, DEFAULT_TIMEOUT);
+        slaveContext.execute(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                assertNull(searchRootEntityUsingFTI(session, "manyToManyEntities.name", "Gregory Goyle"));
+            }
+        });
     }
 
     @AfterMethod(alwaysRun = true)

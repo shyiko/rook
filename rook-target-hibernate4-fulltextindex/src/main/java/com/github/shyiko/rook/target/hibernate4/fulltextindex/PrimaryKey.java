@@ -15,13 +15,13 @@
  */
 package com.github.shyiko.rook.target.hibernate4.fulltextindex;
 
-import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.KeyValue;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
+import org.hibernate.property.Getter;
 
 import java.io.Serializable;
 import java.lang.reflect.Field;
@@ -35,21 +35,13 @@ import java.util.Map;
 public class PrimaryKey {
 
     private Class entityClass;
+    private Getter getter;
     private final KeyColumn[] positionWithinRow;
 
-    public PrimaryKey(Collection collection) {
-        this(collection.getKey(), collection.getCollectionTable());
-        if (positionWithinRow.length != 1) {
-            throw new IllegalStateException("Unexpected PK length " + positionWithinRow.length);
-        }
-    }
-
     public PrimaryKey(PersistentClass persistentClass) {
-        this(persistentClass.getKey(), persistentClass.getTable());
-        entityClass = persistentClass.getMappedClass();
-    }
-
-    private PrimaryKey(KeyValue keyValue, Table table) {
+        this.entityClass = persistentClass.getMappedClass();
+        KeyValue keyValue = persistentClass.getKey();
+        Table table = persistentClass.getTable();
         Map<String, Integer> columnIndexByNameMap = getColumnIndexByNameMap(table);
         KeyColumn[] positionWithinRow = new KeyColumn[keyValue.getColumnSpan()];
         int index = 0;
@@ -70,6 +62,20 @@ public class PrimaryKey {
         if (positionWithinRow.length == 0) {
             throw new IllegalStateException("Unable to determine PK for " + table.getName());
         }
+        Property identifierProperty = persistentClass.getIdentifierProperty();
+        this.getter = identifierProperty.getGetter(this.entityClass);
+        this.positionWithinRow = positionWithinRow;
+
+    }
+
+    public PrimaryKey(PrimaryKey primaryKey, Map<String, Integer> columnIndexByNameMap) {
+        this.entityClass = primaryKey.entityClass;
+        KeyColumn[] positionWithinRow = new KeyColumn[columnIndexByNameMap.size()];
+        int index = 0;
+        for (Map.Entry<String, Integer> entry : columnIndexByNameMap.entrySet()) {
+            positionWithinRow[index] = new KeyColumn(entry.getKey(), entry.getValue());
+        }
+        this.getter = primaryKey.getter;
         this.positionWithinRow = positionWithinRow;
     }
 
@@ -86,6 +92,10 @@ public class PrimaryKey {
 
     public Class getEntityClass() {
         return entityClass;
+    }
+
+    public Serializable getIdentifier(Object entity) {
+        return (Serializable) getter.get(entity);
     }
 
     public Serializable getIdentifier(Serializable[] row) {

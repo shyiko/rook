@@ -15,27 +15,12 @@
  */
 package com.github.shyiko.rook.target.hibernate4.fulltextindex;
 
-import java.io.Serializable;
+import java.util.List;
 
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
-public class Entity {
+public interface RowsMutationIndexer {
 
-    private final Class entityClass;
-    private final Serializable id;
-
-    public Entity(Class entityClass, Serializable id) {
-        this.entityClass = entityClass;
-        this.id = id;
-    }
-
-    public Class getEntityClass() {
-        return entityClass;
-    }
-
-    public Serializable getId() {
-        return id;
-    }
-
+    void index(List<RowsMutation> rowsMutations, SynchronizationContext synchronizationContext);
 }
