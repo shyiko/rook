@@ -209,6 +209,15 @@
                                                 <fileset dir="rook-target-hibernate4-cache/src/main/java"/>
                                             </sourcefiles>
                                         </group>
+                                        <group name="rook-target-hibernate4-fulltextindex">
+                                            <classfiles>
+                                                <fileset dir="rook-target-hibernate4-fulltextindex/target/classes"
+                                                         includes="**/*.class"/>
+                                            </classfiles>
+                                            <sourcefiles>
+                                                <fileset dir="rook-target-hibernate4-fulltextindex/src/main/java"/>
+                                            </sourcefiles>
+                                        </group>
                                     </structure>
                                     <html destdir="${project.build.directory}/coverage"/>
                                     <csv destfile="${project.build.directory}/coverage/coverage.csv"/>
@@ -235,6 +244,7 @@
                                 <sourceDirectory>rook-api/src/main/java</sourceDirectory>
                                 <sourceDirectory>rook-source-mysql/src/main/java</sourceDirectory>
                                 <sourceDirectory>rook-target-hibernate4-cache/src/main/java</sourceDirectory>
+                                <sourceDirectory>rook-target-hibernate4-fulltextindex/src/main/java</sourceDirectory>
                             </sourceDirectories>
                         </configuration>
                     </plugin>
