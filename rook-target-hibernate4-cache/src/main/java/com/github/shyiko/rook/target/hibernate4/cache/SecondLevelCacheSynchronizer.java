@@ -65,6 +65,9 @@ public class SecondLevelCacheSynchronizer implements ReplicationEventListener {
         Cache cache = synchronizationContext.getSessionFactory().getCache();
         String qualifiedName = event.getSchema().toLowerCase() + "." + event.getTable().toLowerCase();
         Collection<EvictionTarget> evictionTargets = synchronizationContext.getEvictionTargets(qualifiedName);
+        if (evictionTargets.isEmpty()) {
+            return;
+        }
         for (Serializable[] row : resolveAffectedRows(event)) {
             for (EvictionTarget evictionTarget : evictionTargets) {
                 Serializable key = evictionTarget.getPrimaryKey().getIdentifier(row);
