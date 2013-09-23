@@ -52,6 +52,11 @@ new MySQLReplicationStream("hostname", 3306, "username", "password").
 
 ### Update of FT index with Hibernate 4 Search in response to the replication events (on MySQL)
 
+> Keep in mind that default indexer, which is used by FullTextIndexSynchronizer, relies on
+@org.hibernate.search.annotations.ContainedIn for propagation of indexing events to the container entity(ies).
+As a result, either each @IndexedEmbedded-annotated field/method MUST have corresponding @ContainedIn member
+(inside target entity) or a different indexer is required.
+
 ```xml
 <dependencies>
     <dependency>
