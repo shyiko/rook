@@ -15,6 +15,8 @@
  */
 package com.github.shyiko.rook.target.hibernate4.fulltextindex;
 
+import org.hibernate.search.indexes.interceptor.EntityIndexingInterceptor;
+
 import java.util.Collection;
 
 /**
@@ -24,12 +26,14 @@ public class IndexingDirective {
 
     private final PrimaryKey primaryKey;
     private final boolean suppressSelfIndexing;
+    private final EntityIndexingInterceptor entityIndexingInterceptor;
     private final Collection<Reference> containerReferences;
 
     public IndexingDirective(PrimaryKey primaryKey, boolean suppressSelfIndexing,
-            Collection<Reference> containerReferences) {
+            EntityIndexingInterceptor entityIndexingInterceptor, Collection<Reference> containerReferences) {
         this.primaryKey = primaryKey;
         this.suppressSelfIndexing = suppressSelfIndexing;
+        this.entityIndexingInterceptor = entityIndexingInterceptor;
         this.containerReferences = containerReferences;
     }
 
@@ -39,6 +43,10 @@ public class IndexingDirective {
 
     public boolean isSuppressSelfIndexing() {
         return suppressSelfIndexing;
+    }
+
+    public EntityIndexingInterceptor getEntityIndexingInterceptor() {
+        return entityIndexingInterceptor;
     }
 
     public Collection<Reference> getContainerReferences() {

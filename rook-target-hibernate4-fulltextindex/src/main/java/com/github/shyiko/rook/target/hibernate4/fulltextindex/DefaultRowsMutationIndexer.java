@@ -19,6 +19,8 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.search.FullTextSession;
 import org.hibernate.search.Search;
+import org.hibernate.search.indexes.interceptor.EntityIndexingInterceptor;
+import org.hibernate.search.indexes.interceptor.IndexingOverride;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +47,7 @@ public class DefaultRowsMutationIndexer implements RowsMutationIndexer {
             Transaction tx = fullTextSession.beginTransaction();
             try {
                 for (RowsMutation entity : rowsMutations) {
-                    index(fullTextSession, entity, indexingLog, synchronizationContext);
+                    indexRowsMutation(fullTextSession, entity, indexingLog, synchronizationContext);
                 }
                 tx.commit();
             } catch (RuntimeException e) {
@@ -60,7 +62,7 @@ public class DefaultRowsMutationIndexer implements RowsMutationIndexer {
     }
 
     @SuppressWarnings("unchecked")
-    private void index(FullTextSession session, RowsMutation rowsMutation, IndexingLog indexingLog,
+    private void indexRowsMutation(FullTextSession session, RowsMutation rowsMutation, IndexingLog indexingLog,
             SynchronizationContext synchronizationContext) {
         IndexingDirective indexingDirective = rowsMutation.getIndexingDirective();
         PrimaryKey primaryKey = indexingDirective.getPrimaryKey();
@@ -73,9 +75,9 @@ public class DefaultRowsMutationIndexer implements RowsMutationIndexer {
             Object entity = loadEntity(session, entityClass, id);
             if (!indexingDirective.isSuppressSelfIndexing()) {
                 if (entity != null) {
-                    session.index(entity);
+                    indexEntity(session, entity, indexingDirective);
                 } else {
-                    session.purge(entityClass, id);
+                    purgeEntity(session, entityClass, id);
                 }
             }
             indexingLog.markIndexed(entityClass, id);
@@ -114,7 +116,7 @@ public class DefaultRowsMutationIndexer implements RowsMutationIndexer {
             return;
         }
         if (!indexingDirective.isSuppressSelfIndexing()) {
-            session.index(entity);
+            indexEntity(session, entity, indexingDirective);
         }
         indexingLog.markIndexed(entityClass, id);
         indexContainers(session, entity, indexingDirective, indexingLog, synchronizationContext);
@@ -122,6 +124,28 @@ public class DefaultRowsMutationIndexer implements RowsMutationIndexer {
 
     protected Object loadEntity(Session session, Class entityClass, Serializable id) {
         return session.get(entityClass, id);
+    }
+
+    @SuppressWarnings("unchecked")
+    protected void indexEntity(FullTextSession session, Object entity, IndexingDirective indexingDirective) {
+        EntityIndexingInterceptor interceptor = indexingDirective.getEntityIndexingInterceptor();
+        if (interceptor != null) {
+            IndexingOverride indexingOverride = interceptor.onUpdate(entity);
+            if (indexingOverride == IndexingOverride.SKIP) {
+                return;
+            } else
+            if (indexingOverride == IndexingOverride.REMOVE) {
+                PrimaryKey primaryKey = indexingDirective.getPrimaryKey();
+                session.purge(primaryKey.getEntityClass(), primaryKey.getIdentifier(entity));
+                return;
+            }
+        }
+        session.index(entity);
+    }
+
+    @SuppressWarnings("unchecked")
+    protected void purgeEntity(FullTextSession session, Class entityClass, Serializable id) {
+        session.purge(entityClass, id);
     }
 
     private static class IndexingLog {

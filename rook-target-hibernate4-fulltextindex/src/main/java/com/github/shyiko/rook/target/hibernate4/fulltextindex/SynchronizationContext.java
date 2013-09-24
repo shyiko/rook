@@ -27,6 +27,8 @@ import org.hibernate.mapping.Value;
 import org.hibernate.property.Getter;
 import org.hibernate.search.annotations.ContainedIn;
 import org.hibernate.search.annotations.Indexed;
+import org.hibernate.search.indexes.interceptor.DefaultEntityInterceptor;
+import org.hibernate.search.indexes.interceptor.EntityIndexingInterceptor;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
@@ -71,6 +73,7 @@ public class SynchronizationContext {
         return directivesByEntityClass.get(entityClass);
     }
 
+    @SuppressWarnings("unchecked")
     private void loadIndexingDirectives(Configuration configuration) {
         Map<String, IndexingDirective> directivesByEntityNameMap = new HashMap<String, IndexingDirective>();
         Collection<Property> allContainedInProperties = new ArrayList<Property>();
@@ -78,8 +81,20 @@ public class SynchronizationContext {
             PersistentClass persistentClass = classIterator.next();
             boolean suppressSelfIndexing = true;
             Class mappedClass = persistentClass.getMappedClass();
-            if (mappedClass.isAnnotationPresent(Indexed.class)) {
+            Indexed indexed = (Indexed) mappedClass.getAnnotation(Indexed.class);
+            EntityIndexingInterceptor indexingInterceptor = null;
+            if (indexed != null) {
                 suppressSelfIndexing = false;
+                Class<? extends EntityIndexingInterceptor> interceptorClass = indexed.interceptor();
+                if (interceptorClass != DefaultEntityInterceptor.class) {
+                    try {
+                        indexingInterceptor = interceptorClass.newInstance();
+                    } catch (InstantiationException e) {
+                        throw new RuntimeException("Failed to instantiate " + interceptorClass, e);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException("Failed to instantiate " + interceptorClass, e);
+                    }
+                }
             }
             Collection<Property> containedInProperties = extractAnnotatedProperties(persistentClass, ContainedIn.class);
             if (suppressSelfIndexing && containedInProperties.isEmpty()) {
@@ -91,7 +106,8 @@ public class SynchronizationContext {
             for (Property property : containedInProperties) {
                 containers.add(new Reference(property.getGetter(mappedClass)));
             }
-            IndexingDirective indexingDirective = new IndexingDirective(primaryKey, suppressSelfIndexing, containers);
+            IndexingDirective indexingDirective = new IndexingDirective(primaryKey, suppressSelfIndexing,
+                indexingInterceptor, containers);
             Table table = persistentClass.getTable();
             directivesByTable.put(schema + "." + table.getName().toLowerCase(), indexingDirective);
             directivesByEntityClass.put(mappedClass, indexingDirective);
@@ -140,6 +156,7 @@ public class SynchronizationContext {
                 IndexingDirective containerIndexingDirective = directivesByEntityClass.get(primaryKey.getEntityClass());
                 directivesByTable.put(tableName,
                     new IndexingDirective(primaryKey, containerIndexingDirective.isSuppressSelfIndexing(),
+                        containerIndexingDirective.getEntityIndexingInterceptor(),
                         containerIndexingDirective.getContainerReferences()));
             }
         }
