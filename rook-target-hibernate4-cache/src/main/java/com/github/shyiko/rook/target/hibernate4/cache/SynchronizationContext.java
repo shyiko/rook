@@ -59,9 +59,9 @@ public class SynchronizationContext {
         for (Iterator<PersistentClass> iterator = configuration.getClassMappings(); iterator.hasNext(); ) {
             PersistentClass persistentClass = iterator.next();
             Table table = persistentClass.getTable();
-            String className = persistentClass.getClassName();
+            String entityName = persistentClass.getEntityName();
             PrimaryKey primaryKey = new PrimaryKey(persistentClass);
-            evictionTargetsOf(table).add(new EvictionTarget(className, primaryKey, false));
+            evictionTargetsOf(table).add(new EvictionTarget(entityName, primaryKey, false));
         }
     }
 
