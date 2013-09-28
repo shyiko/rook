@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Ivan Zaytsev
+ * Copyright 2013 Stanley Shyiko
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,29 +15,18 @@
  */
 package com.github.shyiko.rook.target.hibernate.cache.model;
 
-import org.hibernate.annotations.Cache;
-import org.hibernate.annotations.CacheConcurrencyStrategy;
-
-import javax.persistence.Column;
-import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Table;
-import java.io.Serializable;
 
 /**
- * @author <a href="mailto:ivan.zaytsev@webamg.com">Ivan Zaytsev</a>
+ * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
 @javax.persistence.Entity
-@Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "CORE_REGION")
-@Table(name = "entity")
-public class Entity implements Serializable {
+@Table(name = "non_cacheable_entity")
+public class NonCacheableEntity {
 
     @Id
-    @GeneratedValue
-    @Column(name = "_id")
     private long id;
-    @Column
-    private String name;
 
     public long getId() {
         return id;
@@ -45,13 +34,5 @@ public class Entity implements Serializable {
 
     public void setId(long id) {
         this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 }

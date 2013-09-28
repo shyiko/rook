@@ -29,7 +29,7 @@ import java.io.Serializable;
 public class SynchronizationContextTest extends AbstractHibernateTest {
 
     @Test
-    public void testKeyMapping() throws Exception {
+    public void testSimpleKeyMapping() throws Exception {
         PrimaryKey primaryKey = synchronizationContext.getEvictionTargets("rook.entity").
                 iterator().next().getPrimaryKey();
         Serializable[] allFieldsFofDummy = new Serializable[] {1L, "name"};
@@ -43,6 +43,11 @@ public class SynchronizationContextTest extends AbstractHibernateTest {
         EntityWithCompositeKey expectedKey = new EntityWithCompositeKey(1L, 2L);
         Assert.assertTrue(EqualsBuilder.reflectionEquals(
                 primaryKey.getIdentifier(new Serializable[]{2L, 1L, "name"}), expectedKey));
+    }
+
+    @Test
+    public void testNonCacheableEntityMapping() throws Exception {
+        Assert.assertTrue(synchronizationContext.getEvictionTargets("rook.non_cacheable_entity").isEmpty());
     }
 
 }

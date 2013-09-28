@@ -16,6 +16,7 @@
         <property name="cache.use_second_level_cache">true</property>
         <mapping class="com.github.shyiko.rook.target.hibernate.cache.model.Entity"/>
         <mapping class="com.github.shyiko.rook.target.hibernate.cache.model.EntityWithCompositeKey"/>
+        <mapping class="com.github.shyiko.rook.target.hibernate.cache.model.NonCacheableEntity"/>
     </session-factory>
 
 </hibernate-configuration>

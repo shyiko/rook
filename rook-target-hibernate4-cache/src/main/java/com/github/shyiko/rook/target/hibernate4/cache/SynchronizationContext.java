@@ -58,10 +58,14 @@ public class SynchronizationContext {
     private void loadClassMappings(Configuration configuration) {
         for (Iterator<PersistentClass> iterator = configuration.getClassMappings(); iterator.hasNext(); ) {
             PersistentClass persistentClass = iterator.next();
-            Table table = persistentClass.getTable();
             String entityName = persistentClass.getEntityName();
-            PrimaryKey primaryKey = new PrimaryKey(persistentClass);
-            evictionTargetsOf(table).add(new EvictionTarget(entityName, primaryKey, false));
+            boolean isCacheable = ((SessionFactoryImplementor) sessionFactory).
+                getEntityPersister(entityName).hasCache();
+            if (isCacheable) {
+                Table table = persistentClass.getTable();
+                PrimaryKey primaryKey = new PrimaryKey(persistentClass);
+                evictionTargetsOf(table).add(new EvictionTarget(entityName, primaryKey, false));
+            }
         }
     }
 
@@ -70,10 +74,14 @@ public class SynchronizationContext {
         Iterator<org.hibernate.mapping.Collection> iterator = configuration.getCollectionMappings();
         while (iterator.hasNext()) {
             org.hibernate.mapping.Collection collection = iterator.next();
-            Table table = collection.getCollectionTable();
             String role = collection.getRole();
-            PrimaryKey primaryKey = new PrimaryKey(collection);
-            evictionTargetsOf(table).add(new EvictionTarget(role, primaryKey, true));
+            boolean isCacheable = ((SessionFactoryImplementor) sessionFactory).
+                getCollectionPersister(role).hasCache();
+            if (isCacheable) {
+                Table table = collection.getCollectionTable();
+                PrimaryKey primaryKey = new PrimaryKey(collection);
+                evictionTargetsOf(table).add(new EvictionTarget(role, primaryKey, true));
+            }
         }
     }
 
