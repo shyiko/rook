@@ -50,7 +50,7 @@ new MySQLReplicationStream("hostname", 3306, "username", "password").
 
 > Integration tests available at [supplement/integration-testing/hibernate4-cache-over-mysql](https://github.com/shyiko/rook/tree/master/supplement/integration-testing/hibernate4-cache-over-mysql)
 
-### Update of FT index with Hibernate 4 Search in response to the replication events (on MySQL)
+### Update of Hibernate 4 Search controlled FT index in response to the replication events (on MySQL)
 
 > Keep in mind that default indexer, which is used by FullTextIndexSynchronizer, relies on
 @org.hibernate.search.annotations.ContainedIn for propagation of indexing events to the container entity(ies).
