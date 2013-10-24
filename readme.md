@@ -2,7 +2,8 @@
 
 Change Data Capture (CDC) toolkit for keeping system layers in sync with the database.
 
-Out-of-box rook includes support for MySQL as a source and Hibernate 4 cache (query & 2nd level) as a target.
+Out-of-box rook includes support for MySQL as a source and Hibernate 4 cache (2nd Level & Query),
+FullText index backed by [Hibernate Search](http://www.hibernate.org/subprojects/search.html) as targets.
 
 ## Usage
 
