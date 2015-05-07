@@ -15,11 +15,8 @@
  */
 package com.github.shyiko.rook.target.hibernate4.cache;
 
-import com.github.shyiko.rook.api.event.ReplicationEvent;
-import com.github.shyiko.rook.api.event.RowsMutationReplicationEvent;
-import com.github.shyiko.rook.api.event.TXReplicationEvent;
+import com.github.shyiko.rook.target.hibernate4.mapping.ColumnOrderMappingExporter;
 import org.hibernate.SessionFactory;
-import org.hibernate.StatelessSession;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.mapping.PersistentClass;
@@ -30,7 +27,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -40,6 +36,7 @@ public class SynchronizationContext {
 
     private final String schema;
     private final SessionFactory sessionFactory;
+    private final ColumnOrderMappingExporter columnMappingExporter;
     private final Map<String, Collection<EvictionTarget>> targetsByTable =
             new HashMap<String, Collection<EvictionTarget>>();
     private final Map<String, Map<String, Integer>> columnMappingsByTable =
@@ -49,6 +46,7 @@ public class SynchronizationContext {
         this.schema = ((SessionFactoryImplementor) sessionFactory).getJdbcServices().
                 getExtractedMetaDataSupport().getConnectionCatalogName().toLowerCase();
         this.sessionFactory = sessionFactory;
+        this.columnMappingExporter = new ColumnOrderMappingExporter(getSessionFactory().getServiceRegistry());
         loadClassMappings(configuration);
         loadCollectionMappings(configuration);
     }
@@ -80,13 +78,7 @@ public class SynchronizationContext {
     private Map<String, Integer> getColumnIndexByNameMap(Table table) {
         String tableName = table.getName();
         if (!columnMappingsByTable.containsKey(tableName)) {
-            StatelessSession statelessSession = sessionFactory.openStatelessSession();
-            List<Object[]> tableDescription = statelessSession.createSQLQuery("SHOW COLUMNS FROM " + tableName).list();
-            Map<String, Integer> columnIndexByName = new HashMap<String, Integer>();
-            int index = 0;
-            for (Object[] dbColumn : tableDescription) {
-                columnIndexByName.put(String.valueOf(dbColumn[0]), index++);
-            }
+            Map<String, Integer> columnIndexByName = columnMappingExporter.extractColumnMapping(table);
             columnMappingsByTable.put(tableName, Collections.unmodifiableMap(columnIndexByName));
         }
         return columnMappingsByTable.get(tableName);
@@ -119,18 +111,5 @@ public class SynchronizationContext {
 
     public Map<String, Integer> getColumnMappingsByTable(String tableName) {
         return columnMappingsByTable.get(tableName);
-    }
-
-    public static boolean isHeartbeatEvent(ReplicationEvent event) {
-        RowsMutationReplicationEvent rowMutationEvent = null;
-        if (event instanceof TXReplicationEvent) {
-            List<ReplicationEvent> replicationEvents = ((TXReplicationEvent) event).getEvents();
-            rowMutationEvent = (RowsMutationReplicationEvent) replicationEvents.iterator().next();
-        } else if (event instanceof RowsMutationReplicationEvent) {
-            rowMutationEvent = (RowsMutationReplicationEvent) event;
-        }
-        return rowMutationEvent != null &&
-                "test".equals(rowMutationEvent.getSchema()) &&
-                "heartbeat".equals(rowMutationEvent.getTable());
     }
 }

@@ -25,6 +25,7 @@ import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.github.shyiko.rook.api.ReplicationEventListener;
 import com.github.shyiko.rook.api.ReplicationStream;
+import com.github.shyiko.rook.api.event.RowsMutationReplicationEvent;
 import com.github.shyiko.rook.api.event.DeleteRowsReplicationEvent;
 import com.github.shyiko.rook.api.event.InsertRowsReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
@@ -59,6 +60,7 @@ public class MySQLReplicationStream implements ReplicationStream {
     private final List<ReplicationEventListener> listeners = new LinkedList<ReplicationEventListener>();
 
     private volatile boolean groupEventsByTX = true;
+    private volatile boolean suppressHeartbeatEvents = true;
 
     public MySQLReplicationStream(String username, String password) {
         this("localhost", 3306, username, password);
@@ -73,6 +75,10 @@ public class MySQLReplicationStream implements ReplicationStream {
 
     public void setGroupEventsByTX(boolean groupEventsByTX) {
         this.groupEventsByTX = groupEventsByTX;
+    }
+
+    public void setSuppressHeartbeatEvents(boolean suppressHeartbeatEvents) {
+        this.suppressHeartbeatEvents = suppressHeartbeatEvents;
     }
 
     @Override
@@ -140,16 +146,27 @@ public class MySQLReplicationStream implements ReplicationStream {
 
     private void notifyListeners(ReplicationEvent event) {
         synchronized (listeners) {
-            for (ReplicationEventListener listener : listeners) {
-                try {
-                    listener.onEvent(event);
-                } catch (Exception e) {
-                    if (logger.isWarnEnabled()) {
-                        logger.warn(listener + " choked on " + event, e);
+            if (!suppressHeartbeatEvents || !isHeartbeatEvent(event)) {
+                for (ReplicationEventListener listener : listeners) {
+                    try {
+                        listener.onEvent(event);
+                    } catch (Exception e) {
+                        if (logger.isWarnEnabled()) {
+                            logger.warn(listener + " choked on " + event, e);
+                        }
                     }
                 }
             }
         }
+    }
+
+    public boolean isHeartbeatEvent(ReplicationEvent event) {
+        if (event instanceof RowsMutationReplicationEvent) {
+            RowsMutationReplicationEvent rowMutationEvent = (RowsMutationReplicationEvent) event;
+            return "test".equals(rowMutationEvent.getSchema()) &&
+                    "heartbeat".equals(rowMutationEvent.getTable());
+        }
+        return false;
     }
 
     private final class DelegatingEventListener implements BinaryLogClient.EventListener {
