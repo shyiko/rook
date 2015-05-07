@@ -25,7 +25,6 @@ import org.hibernate.mapping.Table;
 
 import java.io.Serializable;
 import java.lang.reflect.Field;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -37,20 +36,19 @@ public class PrimaryKey {
     private Class entityClass;
     private final KeyColumn[] positionWithinRow;
 
-    public PrimaryKey(Collection collection) {
-        this(collection.getKey(), collection.getCollectionTable());
+    public PrimaryKey(Collection collection, Map<String, Integer> columnIndexByNameMap) {
+        this(collection.getKey(), collection.getCollectionTable(), columnIndexByNameMap);
         if (positionWithinRow.length != 1) {
             throw new IllegalStateException("Unexpected PK length " + positionWithinRow.length);
         }
     }
 
-    public PrimaryKey(PersistentClass persistentClass) {
-        this(persistentClass.getKey(), persistentClass.getTable());
+    public PrimaryKey(PersistentClass persistentClass, Map<String, Integer> columnIndexByNameMap) {
+        this(persistentClass.getKey(), persistentClass.getTable(), columnIndexByNameMap);
         entityClass = persistentClass.getMappedClass();
     }
 
-    private PrimaryKey(KeyValue keyValue, Table table) {
-        Map<String, Integer> columnIndexByNameMap = getColumnIndexByNameMap(table);
+    private PrimaryKey(KeyValue keyValue, Table table, Map<String, Integer> columnIndexByNameMap) {
         KeyColumn[] positionWithinRow = new KeyColumn[keyValue.getColumnSpan()];
         int index = 0;
         if (keyValue instanceof Component) {
@@ -71,17 +69,6 @@ public class PrimaryKey {
             throw new IllegalStateException("Unable to determine PK for " + table.getName());
         }
         this.positionWithinRow = positionWithinRow;
-    }
-
-    private Map<String, Integer> getColumnIndexByNameMap(Table table) {
-        Map<String, Integer> columnIndexByName = new HashMap<String, Integer>();
-        int index = 0;
-        Iterator columnIterator = table.getColumnIterator();
-        while (columnIterator.hasNext()) {
-            Column column = (Column) columnIterator.next();
-            columnIndexByName.put(column.getName(), index++);
-        }
-        return columnIndexByName;
     }
 
     public Serializable getIdentifier(Serializable[] row) {

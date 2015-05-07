@@ -16,12 +16,17 @@
 package com.github.shyiko.rook.target.hibernate.cache;
 
 import com.github.shyiko.rook.target.hibernate.cache.model.EntityWithCompositeKey;
+import com.github.shyiko.rook.target.hibernate4.cache.EvictionTarget;
 import com.github.shyiko.rook.target.hibernate4.cache.PrimaryKey;
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.Serializable;
+import java.util.Collection;
+import java.util.Map;
+
+import static org.testng.Assert.assertEquals;
 
 /**
  * @author <a href="mailto:ivan.zaytsev@webamg.com">Ivan Zaytsev</a>
@@ -33,7 +38,24 @@ public class SynchronizationContextTest extends AbstractHibernateTest {
         PrimaryKey primaryKey = synchronizationContext.getEvictionTargets("rook.entity").
                 iterator().next().getPrimaryKey();
         Serializable[] allFieldsFofDummy = new Serializable[] {1L, "name"};
-        Assert.assertEquals(primaryKey.getIdentifier(allFieldsFofDummy), (Long) 1L);
+        assertEquals(primaryKey.getIdentifier(allFieldsFofDummy), (Long) 1L);
+    }
+
+    @Test
+    public void testCollectionMapping() throws Exception {
+        Collection<EvictionTarget> evictionTargets = synchronizationContext.getEvictionTargets("rook.entity_property");
+        assertEquals(1, evictionTargets.size());
+        EvictionTarget collectionEvictionTarget = evictionTargets.iterator().next();
+
+        // simulating correct binlog column order
+        Map<String, Integer> mappingsByName = synchronizationContext.getColumnMappingsByTable("entity_property");
+        Serializable[] collectionfields = new Serializable[mappingsByName.size()];
+        collectionfields[mappingsByName.get("id")] = 2L;
+        collectionfields[mappingsByName.get("entity_id")] = 1L;
+        collectionfields[mappingsByName.get("name")] = "Answer to the Ultimate Question of Life, the Universe, and Everything";
+        collectionfields[mappingsByName.get("value")] = "42";
+
+        assertEquals(collectionEvictionTarget.getPrimaryKey().getIdentifier(collectionfields), (Long) 1L);
     }
 
     @Test

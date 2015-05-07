@@ -18,11 +18,10 @@ package com.github.shyiko.rook.target.hibernate.cache.model;
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 
-import javax.persistence.Column;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import javax.persistence.*;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author <a href="mailto:ivan.zaytsev@webamg.com">Ivan Zaytsev</a>
@@ -36,8 +35,14 @@ public class Entity implements Serializable {
     @GeneratedValue
     @Column(name = "_id")
     private long id;
+
     @Column
     private String name;
+
+    @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "CORE_REGION")
+    @OneToMany(mappedBy = "enclosingEntity", fetch = FetchType.EAGER, targetEntity = EntityProperty.class,
+            cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<EntityProperty> properties = new ArrayList<EntityProperty>();
 
     public long getId() {
         return id;
@@ -53,5 +58,13 @@ public class Entity implements Serializable {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public List<EntityProperty> getProperties() {
+        return properties;
+    }
+
+    public void setProperties(List<EntityProperty> properties) {
+        this.properties = properties;
     }
 }

@@ -16,6 +16,8 @@
 package com.github.shyiko.rook.target.hibernate.cache;
 
 import com.github.shyiko.rook.api.event.DeleteRowsReplicationEvent;
+import com.github.shyiko.rook.target.hibernate.cache.model.Entity;
+import com.github.shyiko.rook.target.hibernate.cache.model.EntityProperty;
 import com.github.shyiko.rook.target.hibernate.cache.model.EntityWithCompositeKey;
 import com.github.shyiko.rook.target.hibernate4.cache.SecondLevelCacheSynchronizer;
 import org.hibernate.Cache;
@@ -24,8 +26,10 @@ import org.hibernate.SessionFactory;
 import org.testng.annotations.Test;
 
 import java.io.Serializable;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
 /**
@@ -65,6 +69,59 @@ public class SecondLevelCacheSynchronizerTest extends AbstractHibernateTest {
                         new Serializable[] {2L, 1L}));
                 assertFalse(cache.containsEntity(EntityWithCompositeKey.class, firstEntityKey));
                 assertTrue(cache.containsEntity(EntityWithCompositeKey.class, secondEntityKey));
+            }
+        });
+    }
+
+    @Test
+    public void testEvictionOfEntityCollection() throws Exception {
+        final Cache cache = synchronizationContext.getSessionFactory().getCache();
+        final AtomicLong idHolder = new AtomicLong();
+
+        executeInTransaction(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                Entity entity = new Entity();
+                entity.setName("Name");
+
+                EntityProperty entityProperty = new EntityProperty();
+                entityProperty.setName("name");
+                entityProperty.setValue("value");
+                entityProperty.setEnclosingEntity(entity);
+                entity.getProperties().add(entityProperty);
+
+                idHolder.set((Long) session.save(entity));
+            }
+        });
+        final long ENTITY_ID = idHolder.get();
+
+        executeInTransaction(new Callback<Session>() {
+
+            @Override
+            public void execute(Session session) {
+                assertNotNull(session.get(Entity.class, ENTITY_ID));
+            }
+        });
+
+        executeInTransaction(new Callback<Session>() {
+
+            @Override
+            public void execute(Session obj) {
+                assertTrue(cache.containsEntity(Entity.class, ENTITY_ID));
+                SecondLevelCacheSynchronizer secondLevelCacheSynchronizer =
+                        new SecondLevelCacheSynchronizer(synchronizationContext);
+                secondLevelCacheSynchronizer.onEvent(new DeleteRowsReplicationEvent("rook", "entity",
+                        new Serializable[] {ENTITY_ID}));
+                assertFalse(cache.containsEntity(Entity.class, ENTITY_ID));
+
+                assertTrue(cache.containsCollection(Entity.class.getName() + ".properties", ENTITY_ID));
+
+                // entity_property table structure [id, name, value, entity_id]
+                secondLevelCacheSynchronizer.onEvent(new DeleteRowsReplicationEvent("rook", "entity_property",
+                        new Serializable[]{null, null, null, ENTITY_ID}));
+
+                assertFalse(cache.containsCollection(Entity.class.getName() + ".properties", ENTITY_ID));
             }
         });
     }

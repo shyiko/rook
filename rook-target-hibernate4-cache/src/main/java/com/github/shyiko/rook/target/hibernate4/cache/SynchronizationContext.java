@@ -15,7 +15,11 @@
  */
 package com.github.shyiko.rook.target.hibernate4.cache;
 
+import com.github.shyiko.rook.api.event.ReplicationEvent;
+import com.github.shyiko.rook.api.event.RowsMutationReplicationEvent;
+import com.github.shyiko.rook.api.event.TXReplicationEvent;
 import org.hibernate.SessionFactory;
+import org.hibernate.StatelessSession;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.mapping.PersistentClass;
@@ -26,6 +30,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -37,6 +42,8 @@ public class SynchronizationContext {
     private final SessionFactory sessionFactory;
     private final Map<String, Collection<EvictionTarget>> targetsByTable =
             new HashMap<String, Collection<EvictionTarget>>();
+    private final Map<String, Map<String, Integer>> columnMappingsByTable =
+            new HashMap<String, Map<String, Integer>>();
 
     public SynchronizationContext(Configuration configuration, SessionFactory sessionFactory) {
         this.schema = ((SessionFactoryImplementor) sessionFactory).getJdbcServices().
@@ -63,10 +70,26 @@ public class SynchronizationContext {
                 getEntityPersister(entityName).hasCache();
             if (isCacheable) {
                 Table table = persistentClass.getTable();
-                PrimaryKey primaryKey = new PrimaryKey(persistentClass);
+                PrimaryKey primaryKey = new PrimaryKey(persistentClass, getColumnIndexByNameMap(table));
                 evictionTargetsOf(table).add(new EvictionTarget(entityName, primaryKey, false));
             }
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Integer> getColumnIndexByNameMap(Table table) {
+        String tableName = table.getName();
+        if (!columnMappingsByTable.containsKey(tableName)) {
+            StatelessSession statelessSession = sessionFactory.openStatelessSession();
+            List<Object[]> tableDescription = statelessSession.createSQLQuery("SHOW COLUMNS FROM " + tableName).list();
+            Map<String, Integer> columnIndexByName = new HashMap<String, Integer>();
+            int index = 0;
+            for (Object[] dbColumn : tableDescription) {
+                columnIndexByName.put(String.valueOf(dbColumn[0]), index++);
+            }
+            columnMappingsByTable.put(tableName, Collections.unmodifiableMap(columnIndexByName));
+        }
+        return columnMappingsByTable.get(tableName);
     }
 
     private void loadCollectionMappings(Configuration configuration) {
@@ -79,7 +102,7 @@ public class SynchronizationContext {
                 getCollectionPersister(role).hasCache();
             if (isCacheable) {
                 Table table = collection.getCollectionTable();
-                PrimaryKey primaryKey = new PrimaryKey(collection);
+                PrimaryKey primaryKey = new PrimaryKey(collection, getColumnIndexByNameMap(table));
                 evictionTargetsOf(table).add(new EvictionTarget(role, primaryKey, true));
             }
         }
@@ -92,5 +115,22 @@ public class SynchronizationContext {
             targetsByTable.put(key, evictionTargets = new LinkedList<EvictionTarget>());
         }
         return evictionTargets;
+    }
+
+    public Map<String, Integer> getColumnMappingsByTable(String tableName) {
+        return columnMappingsByTable.get(tableName);
+    }
+
+    public static boolean isHeartbeatEvent(ReplicationEvent event) {
+        RowsMutationReplicationEvent rowMutationEvent = null;
+        if (event instanceof TXReplicationEvent) {
+            List<ReplicationEvent> replicationEvents = ((TXReplicationEvent) event).getEvents();
+            rowMutationEvent = (RowsMutationReplicationEvent) replicationEvents.iterator().next();
+        } else if (event instanceof RowsMutationReplicationEvent) {
+            rowMutationEvent = (RowsMutationReplicationEvent) event;
+        }
+        return rowMutationEvent != null &&
+                "test".equals(rowMutationEvent.getSchema()) &&
+                "heartbeat".equals(rowMutationEvent.getTable());
     }
 }

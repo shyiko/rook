@@ -41,6 +41,9 @@ public class HibernateCacheSynchronizer implements ReplicationEventListener {
 
     @Override
     public void onEvent(ReplicationEvent event) {
+        if (SynchronizationContext.isHeartbeatEvent(event)) {
+            return;
+        }
         for (ReplicationEventListener listener : listeners) {
             listener.onEvent(event);
         }
