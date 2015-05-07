@@ -1,4 +1,5 @@
 language: java
+script: 'if [[ $TRAVIS_REPO_SLUG == "shyiko/rook" && $TRAVIS_BRANCH == "master" && $TRAVIS_PULL_REQUEST == "false" ]]; then mvn -P with-sources-and-javadocs -Ddeploy=snapshot -DskipTests=true -s .travis.settings.xml; else mvn clean install; fi'
 script: mvn -P with-sources-and-javadocs -Ddeploy=snapshot -DskipTests=true -s .travis.settings.xml
 env: 
   global: 
