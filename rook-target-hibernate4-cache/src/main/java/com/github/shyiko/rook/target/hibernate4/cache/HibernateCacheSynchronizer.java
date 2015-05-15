@@ -20,6 +20,7 @@ import com.github.shyiko.rook.api.event.ReplicationEvent;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,7 +31,7 @@ public class HibernateCacheSynchronizer implements ReplicationEventListener {
 
     private final List<ReplicationEventListener> listeners;
 
-    public HibernateCacheSynchronizer(Configuration configuration, SessionFactory sessionFactory) {
+    public HibernateCacheSynchronizer(Configuration configuration, SessionFactory sessionFactory) throws SQLException {
         SynchronizationContext synchronizationContext = new SynchronizationContext(configuration, sessionFactory);
         listeners = new ArrayList<ReplicationEventListener>();
         listeners.add(new SecondLevelCacheSynchronizer(synchronizationContext));

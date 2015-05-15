@@ -60,7 +60,7 @@ public class MySQLReplicationStream implements ReplicationStream {
     private final List<ReplicationEventListener> listeners = new LinkedList<ReplicationEventListener>();
 
     private volatile boolean groupEventsByTX = true;
-    private volatile boolean suppressHeartbeatEvents = true;
+    private volatile boolean suppressHeartbeatEvents = false;
 
     public MySQLReplicationStream(String username, String password) {
         this("localhost", 3306, username, password);
@@ -145,8 +145,8 @@ public class MySQLReplicationStream implements ReplicationStream {
     }
 
     private void notifyListeners(ReplicationEvent event) {
-        synchronized (listeners) {
-            if (!suppressHeartbeatEvents || !isHeartbeatEvent(event)) {
+        if (!suppressHeartbeatEvents || !isHeartbeatEvent(event)) {
+            synchronized (listeners) {
                 for (ReplicationEventListener listener : listeners) {
                     try {
                         listener.onEvent(event);
@@ -160,7 +160,7 @@ public class MySQLReplicationStream implements ReplicationStream {
         }
     }
 
-    public boolean isHeartbeatEvent(ReplicationEvent event) {
+    private boolean isHeartbeatEvent(ReplicationEvent event) {
         if (event instanceof RowsMutationReplicationEvent) {
             RowsMutationReplicationEvent rowMutationEvent = (RowsMutationReplicationEvent) event;
             return "test".equals(rowMutationEvent.getSchema()) &&

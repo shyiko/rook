@@ -23,6 +23,10 @@ import org.hibernate.service.ServiceRegistryBuilder;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 
+import java.sql.SQLException;
+
+import static org.junit.Assert.fail;
+
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
@@ -36,7 +40,11 @@ public abstract class AbstractHibernateTest {
         ServiceRegistry serviceRegistry = new ServiceRegistryBuilder().
                 applySettings(configuration.getProperties()).buildServiceRegistry();
         SessionFactory sessionFactory = configuration.buildSessionFactory(serviceRegistry);
-        synchronizationContext = new SynchronizationContext(configuration, sessionFactory);
+        try {
+            synchronizationContext = new SynchronizationContext(configuration, sessionFactory);
+        } catch (SQLException e) {
+            fail("SynchronizationContext failed to start");
+        }
     }
 
     @AfterClass
