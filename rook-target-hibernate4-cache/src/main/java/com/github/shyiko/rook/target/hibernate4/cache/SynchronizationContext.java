@@ -88,31 +88,26 @@ public class SynchronizationContext {
 
     private Map<String, Integer> extractColumnMapping(Table table) throws SQLException {
         Map<String, Integer> result = new HashMap<String, Integer>();
-        ResultSet rs = null;
         Connection connection = null;
         ConnectionProvider connectionProvider = getSessionFactory().getServiceRegistry().
                 getService(ConnectionProvider.class);
         try {
             connection = connectionProvider.getConnection();
             DatabaseMetaData meta = connection.getMetaData();
-            rs = meta.getColumns(table.getCatalog(), table.getSchema(), table.getName(), "%");
-            int index = 0;
-            while (rs.next()) {
-                String column = rs.getString("COLUMN_NAME");
-                if (column != null) {
-                    result.put(column, index++);
-                }
-            }
-        } finally {
+            ResultSet rs = meta.getColumns(table.getCatalog(), table.getSchema(), table.getName(), "%");
             try {
-                if (rs != null) {
-                    rs.close();
+                int index = 0;
+                while (rs.next()) {
+                    String column = rs.getString("COLUMN_NAME");
+                    if (column != null) {
+                        result.put(column, index++);
+                    }
                 }
             } finally {
-                if (connection != null) {
-                    connectionProvider.closeConnection(connection);
-                }
+                rs.close();
             }
+        } finally {
+            connectionProvider.closeConnection(connection);
         }
         return result;
     }
