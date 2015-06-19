@@ -20,7 +20,12 @@ import org.hibernate.cfg.Configuration;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Table;
+import org.hibernate.service.jdbc.connections.spi.ConnectionProvider;
 
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,8 +42,11 @@ public class SynchronizationContext {
     private final SessionFactory sessionFactory;
     private final Map<String, Collection<EvictionTarget>> targetsByTable =
             new HashMap<String, Collection<EvictionTarget>>();
+    private final Map<String, Map<String, Integer>> columnMappingsByTable =
+            new HashMap<String, Map<String, Integer>>();
 
-    public SynchronizationContext(Configuration configuration, SessionFactory sessionFactory) {
+    public SynchronizationContext(Configuration configuration, SessionFactory sessionFactory)
+            throws SQLException {
         this.schema = ((SessionFactoryImplementor) sessionFactory).getJdbcServices().
                 getExtractedMetaDataSupport().getConnectionCatalogName().toLowerCase();
         this.sessionFactory = sessionFactory;
@@ -55,31 +63,66 @@ public class SynchronizationContext {
         return evictionTargets == null ? Collections.<EvictionTarget>emptyList() : evictionTargets;
     }
 
-    private void loadClassMappings(Configuration configuration) {
+    private void loadClassMappings(Configuration configuration) throws SQLException {
         for (Iterator<PersistentClass> iterator = configuration.getClassMappings(); iterator.hasNext(); ) {
             PersistentClass persistentClass = iterator.next();
             String entityName = persistentClass.getEntityName();
             boolean isCacheable = ((SessionFactoryImplementor) sessionFactory).
-                getEntityPersister(entityName).hasCache();
+                    getEntityPersister(entityName).hasCache();
             if (isCacheable) {
                 Table table = persistentClass.getTable();
-                PrimaryKey primaryKey = new PrimaryKey(persistentClass);
+                PrimaryKey primaryKey = new PrimaryKey(persistentClass, getColumnIndexByNameMap(table));
                 evictionTargetsOf(table).add(new EvictionTarget(entityName, primaryKey, false));
             }
         }
     }
 
-    private void loadCollectionMappings(Configuration configuration) {
+    private Map<String, Integer> getColumnIndexByNameMap(Table table) throws SQLException {
+        String tableName = table.getName();
+        if (!columnMappingsByTable.containsKey(tableName)) {
+            Map<String, Integer> columnIndexByName = extractColumnMapping(table);
+            columnMappingsByTable.put(tableName, Collections.unmodifiableMap(columnIndexByName));
+        }
+        return columnMappingsByTable.get(tableName);
+    }
+
+    private Map<String, Integer> extractColumnMapping(Table table) throws SQLException {
+        Map<String, Integer> result = new HashMap<String, Integer>();
+        Connection connection = null;
+        ConnectionProvider connectionProvider = getSessionFactory().getServiceRegistry().
+                getService(ConnectionProvider.class);
+        try {
+            connection = connectionProvider.getConnection();
+            DatabaseMetaData meta = connection.getMetaData();
+            ResultSet rs = meta.getColumns(table.getCatalog(), table.getSchema(), table.getName(), "%");
+            try {
+                int index = 0;
+                while (rs.next()) {
+                    String column = rs.getString("COLUMN_NAME");
+                    if (column != null) {
+                        result.put(column, index++);
+                    }
+                }
+            } finally {
+                rs.close();
+            }
+        } finally {
+            connectionProvider.closeConnection(connection);
+        }
+        return result;
+    }
+
+    private void loadCollectionMappings(Configuration configuration) throws SQLException {
         @SuppressWarnings("unchecked")
         Iterator<org.hibernate.mapping.Collection> iterator = configuration.getCollectionMappings();
         while (iterator.hasNext()) {
             org.hibernate.mapping.Collection collection = iterator.next();
             String role = collection.getRole();
             boolean isCacheable = ((SessionFactoryImplementor) sessionFactory).
-                getCollectionPersister(role).hasCache();
+                    getCollectionPersister(role).hasCache();
             if (isCacheable) {
                 Table table = collection.getCollectionTable();
-                PrimaryKey primaryKey = new PrimaryKey(collection);
+                PrimaryKey primaryKey = new PrimaryKey(collection, getColumnIndexByNameMap(table));
                 evictionTargetsOf(table).add(new EvictionTarget(role, primaryKey, true));
             }
         }
@@ -92,5 +135,9 @@ public class SynchronizationContext {
             targetsByTable.put(key, evictionTargets = new LinkedList<EvictionTarget>());
         }
         return evictionTargets;
+    }
+
+    public Map<String, Integer> getColumnMappingsByTable(String tableName) {
+        return columnMappingsByTable.get(tableName);
     }
 }

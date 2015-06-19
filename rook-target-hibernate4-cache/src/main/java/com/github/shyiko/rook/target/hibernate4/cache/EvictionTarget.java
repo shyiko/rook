@@ -44,4 +44,12 @@ public class EvictionTarget {
     public boolean isCollection() {
         return collection;
     }
+
+    @Override
+    public String toString() {
+        return "EvictionTarget{" +
+                "collection=" + collection +
+                ", name='" + name + '\'' +
+                '}';
+    }
 }

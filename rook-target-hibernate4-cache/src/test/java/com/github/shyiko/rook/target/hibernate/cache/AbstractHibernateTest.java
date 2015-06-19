@@ -23,6 +23,8 @@ import org.hibernate.service.ServiceRegistryBuilder;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 
+import java.sql.SQLException;
+
 /**
  * @author <a href="mailto:stanley.shyiko@gmail.com">Stanley Shyiko</a>
  */
@@ -31,7 +33,7 @@ public abstract class AbstractHibernateTest {
     protected SynchronizationContext synchronizationContext;
 
     @BeforeClass
-    public void setUp() {
+    public void setUp() throws SQLException {
         Configuration configuration = new Configuration().configure("hibernate.cfg.xml");
         ServiceRegistry serviceRegistry = new ServiceRegistryBuilder().
                 applySettings(configuration.getProperties()).buildServiceRegistry();
