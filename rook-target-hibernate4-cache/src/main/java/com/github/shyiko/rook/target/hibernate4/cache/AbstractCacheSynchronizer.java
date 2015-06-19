@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * @author <a href="mailto:igor.grunskiy@lifestreetmedia.com">Igor Grunskiy</a>
+ * @author <a href="mailto:igor.grunskyi@gmail.com">Igor Grunskiy</a>
  */
 public abstract class AbstractCacheSynchronizer implements ReplicationEventListener {
 
@@ -56,7 +56,7 @@ public abstract class AbstractCacheSynchronizer implements ReplicationEventListe
             events.add((RowsMutationReplicationEvent) event);
         }
         if (events != null && !events.isEmpty()) {
-            processSynchronization(events);
+            processTXSynchronization(events);
         }
     }
 
@@ -78,5 +78,6 @@ public abstract class AbstractCacheSynchronizer implements ReplicationEventListe
         throw new UnsupportedOperationException("Unexpected " + event.getClass());
     }
 
-    protected abstract void processSynchronization(Collection<RowsMutationReplicationEvent> events);
+    protected abstract void processTXSynchronization(Collection<RowsMutationReplicationEvent> txEvents);
+
 }

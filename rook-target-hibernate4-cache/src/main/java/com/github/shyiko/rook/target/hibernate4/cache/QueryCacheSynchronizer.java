@@ -44,9 +44,9 @@ public class QueryCacheSynchronizer extends AbstractCacheSynchronizer {
     }
 
     @Override
-    protected void processSynchronization(Collection<RowsMutationReplicationEvent> events) {
+    protected void processTXSynchronization(Collection<RowsMutationReplicationEvent> txEvents) {
         Set<String> spacesToInvalidate = new HashSet<String>();
-        for (RowsMutationReplicationEvent event : events) {
+        for (RowsMutationReplicationEvent event : txEvents) {
             Collection<EvictionTarget> evictionTargets = synchronizationContext.getEvictionTargets(
                     event.getSchema().toLowerCase() + "." + event.getTable().toLowerCase());
             for (EvictionTarget evictionTarget : evictionTargets) {

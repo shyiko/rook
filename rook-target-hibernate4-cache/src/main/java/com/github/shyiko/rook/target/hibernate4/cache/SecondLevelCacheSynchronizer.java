@@ -38,16 +38,13 @@ public class SecondLevelCacheSynchronizer extends AbstractCacheSynchronizer {
         }
     }
 
-    protected void processSynchronization(Collection<RowsMutationReplicationEvent> events) {
-        for (RowsMutationReplicationEvent event : events) {
+    protected void processTXSynchronization(Collection<RowsMutationReplicationEvent> txEvents) {
+        for (RowsMutationReplicationEvent event : txEvents) {
             Cache cache = synchronizationContext.getSessionFactory().getCache();
             String qualifiedName = event.getSchema().toLowerCase() + "." + event.getTable().toLowerCase();
-            Collection<EvictionTarget> evictionTargets = synchronizationContext.getEvictionTargets(qualifiedName);
-            if (evictionTargets.isEmpty()) {
-                return;
-            }
-            for (Serializable[] row : resolveAffectedRows(event)) {
-                for (EvictionTarget evictionTarget : evictionTargets) {
+
+            for (EvictionTarget evictionTarget : synchronizationContext.getEvictionTargets(qualifiedName)) {
+                for (Serializable[] row : resolveAffectedRows(event)) {
                     Serializable key = evictionTarget.getPrimaryKey().getIdentifier(row);
                     if (logger.isDebugEnabled()) {
                         logger.debug("Evicting " + evictionTarget.getName() + "#" + key);
@@ -55,7 +52,7 @@ public class SecondLevelCacheSynchronizer extends AbstractCacheSynchronizer {
                     // todo(shyiko): do we need a lock here?
                     if (evictionTarget.isCollection()) {
                         if (key == null) {
-                            continue; // that's ok, there's just no mapped collection
+                            continue; // that's ok, there is no mapped collection for this row
                         }
                         cache.evictCollection(evictionTarget.getName(), key);
                     } else {

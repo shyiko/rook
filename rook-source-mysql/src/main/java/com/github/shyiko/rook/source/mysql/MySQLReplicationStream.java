@@ -23,6 +23,7 @@ import com.github.shyiko.mysql.binlog.event.QueryEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
+import com.github.shyiko.rook.api.ReplicationEventExceptionHandler;
 import com.github.shyiko.rook.api.ReplicationEventListener;
 import com.github.shyiko.rook.api.ReplicationStream;
 import com.github.shyiko.rook.api.event.RowsMutationReplicationEvent;
@@ -54,13 +55,15 @@ public class MySQLReplicationStream implements ReplicationStream {
     private final int port;
     private final String username;
     private final String password;
+    private String heartbeatTable = "heartbeat";
+    private boolean suppressHeartbeatEvents;
 
     private BinaryLogClient binaryLogClient;
 
     private final List<ReplicationEventListener> listeners = new LinkedList<ReplicationEventListener>();
+    private ReplicationEventExceptionHandler exceptionHandler;
 
     private volatile boolean groupEventsByTX = true;
-    private volatile boolean suppressHeartbeatEvents = false;
 
     public MySQLReplicationStream(String username, String password) {
         this("localhost", 3306, username, password);
@@ -79,6 +82,14 @@ public class MySQLReplicationStream implements ReplicationStream {
 
     public void setSuppressHeartbeatEvents(boolean suppressHeartbeatEvents) {
         this.suppressHeartbeatEvents = suppressHeartbeatEvents;
+    }
+
+    public void setHeartbeatTable(String heartbeatTable) {
+        this.heartbeatTable = heartbeatTable;
+    }
+
+    public void setExceptionHandler(ReplicationEventExceptionHandler exceptionHandler) {
+        this.exceptionHandler = exceptionHandler;
     }
 
     @Override
@@ -154,6 +165,9 @@ public class MySQLReplicationStream implements ReplicationStream {
                         if (logger.isWarnEnabled()) {
                             logger.warn(listener + " choked on " + event, e);
                         }
+                        if (exceptionHandler != null) {
+                            exceptionHandler.handle(e);
+                        }
                     }
                 }
             }
@@ -163,8 +177,11 @@ public class MySQLReplicationStream implements ReplicationStream {
     private boolean isHeartbeatEvent(ReplicationEvent event) {
         if (event instanceof RowsMutationReplicationEvent) {
             RowsMutationReplicationEvent rowMutationEvent = (RowsMutationReplicationEvent) event;
-            return "test".equals(rowMutationEvent.getSchema()) &&
-                    "heartbeat".equals(rowMutationEvent.getTable());
+            return rowMutationEvent.getTable().equals(heartbeatTable);
+        } else if (event instanceof TXReplicationEvent) {
+            List<ReplicationEvent> events = ((TXReplicationEvent) event).getEvents();
+            return events.size() == 1 &&
+                    ((RowsMutationReplicationEvent) events.get(0)).getTable().equals(heartbeatTable);
         }
         return false;
     }
@@ -224,21 +241,21 @@ public class MySQLReplicationStream implements ReplicationStream {
             WriteRowsEventData eventData = event.getData();
             TableMapEventData tableMapEvent = tablesById.get(eventData.getTableId());
             enqueue(new InsertRowsReplicationEvent(tableMapEvent.getDatabase(),
-                tableMapEvent.getTable(), eventData.getRows()));
+                    tableMapEvent.getTable(), eventData.getRows()));
         }
 
         private void handleUpdateRowsEvent(Event event) {
             UpdateRowsEventData eventData = event.getData();
             TableMapEventData tableMapEvent = tablesById.get(eventData.getTableId());
             enqueue(new UpdateRowsReplicationEvent(tableMapEvent.getDatabase(),
-                tableMapEvent.getTable(), eventData.getRows()));
+                    tableMapEvent.getTable(), eventData.getRows()));
         }
 
         private void handleDeleteRowsEvent(Event event) {
             DeleteRowsEventData eventData = event.getData();
             TableMapEventData tableMapEvent = tablesById.get(eventData.getTableId());
             enqueue(new DeleteRowsReplicationEvent(tableMapEvent.getDatabase(),
-                tableMapEvent.getTable(), eventData.getRows()));
+                    tableMapEvent.getTable(), eventData.getRows()));
         }
 
         private void enqueue(ReplicationEvent event) {
