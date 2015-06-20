@@ -7,22 +7,7 @@ FullText index backed by [Hibernate Search](http://www.hibernate.org/subprojects
 
 ## Usage
 
-The latest development version always available through Sonatype Snapshots repository:
-
-```xml
-<repositories>
-    <repository>
-    <id>sonatype-snapshots</id>
-    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-    <snapshots>
-        <enabled>true</enabled>
-    </snapshots>
-    <releases>
-        <enabled>false</enabled>
-    </releases>
-    </repository>
-</repositories>
-```
+The latest release version available through [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22com.github.shyiko.rook%22%20AND%20a%3A%22rook%22).
 
 ### Eviction of Hibernate 4 Second Level/Query cache records in response to the replication events (on MySQL)
 
@@ -31,12 +16,12 @@ The latest development version always available through Sonatype Snapshots repos
     <dependency>
         <groupId>com.github.shyiko.rook</groupId>
         <artifactId>rook-source-mysql</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
+        <version>0.1.0</version>
     </dependency>
     <dependency>
         <groupId>com.github.shyiko.rook</groupId>
         <artifactId>rook-target-hibernate4-cache</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
+        <version>0.1.0</version>
     </dependency>
 </dependencies>
 ```
@@ -63,12 +48,12 @@ As a result, either each @IndexedEmbedded-annotated field/method MUST have corre
     <dependency>
         <groupId>com.github.shyiko.rook</groupId>
         <artifactId>rook-source-mysql</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
+        <version>0.1.0</version>
     </dependency>
     <dependency>
         <groupId>com.github.shyiko.rook</groupId>
         <artifactId>rook-target-hibernate4-fulltextindex</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
+        <version>0.1.0</version>
     </dependency>
 </dependencies>
 ```
