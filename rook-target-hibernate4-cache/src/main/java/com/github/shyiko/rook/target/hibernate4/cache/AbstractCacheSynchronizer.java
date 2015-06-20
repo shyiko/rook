@@ -56,7 +56,7 @@ public abstract class AbstractCacheSynchronizer implements ReplicationEventListe
             events.add((RowsMutationReplicationEvent) event);
         }
         if (events != null && !events.isEmpty()) {
-            processTXSynchronization(events);
+            processTX(events);
         }
     }
 
@@ -78,6 +78,6 @@ public abstract class AbstractCacheSynchronizer implements ReplicationEventListe
         throw new UnsupportedOperationException("Unexpected " + event.getClass());
     }
 
-    protected abstract void processTXSynchronization(Collection<RowsMutationReplicationEvent> txEvents);
+    protected abstract void processTX(Collection<RowsMutationReplicationEvent> events);
 
 }

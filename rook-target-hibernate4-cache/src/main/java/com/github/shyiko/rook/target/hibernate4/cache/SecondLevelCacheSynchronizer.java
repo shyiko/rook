@@ -38,8 +38,8 @@ public class SecondLevelCacheSynchronizer extends AbstractCacheSynchronizer {
         }
     }
 
-    protected void processTXSynchronization(Collection<RowsMutationReplicationEvent> txEvents) {
-        for (RowsMutationReplicationEvent event : txEvents) {
+    protected void processTX(Collection<RowsMutationReplicationEvent> events) {
+        for (RowsMutationReplicationEvent event : events) {
             Cache cache = synchronizationContext.getSessionFactory().getCache();
             String qualifiedName = event.getSchema().toLowerCase() + "." + event.getTable().toLowerCase();
 
