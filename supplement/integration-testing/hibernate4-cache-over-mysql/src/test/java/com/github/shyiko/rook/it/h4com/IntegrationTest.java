@@ -83,30 +83,31 @@ public class IntegrationTest {
         String dsURL = bundle.getString("hibernate.connection.url");
         URI uri = new URI("schema" + dsURL.substring(dsURL.indexOf("://")));
         final CountDownLatch latchForCreateDatabase = new CountDownLatch(2);
+        final AtomicReference<BinaryLogClient> binaryLogClientRef = new AtomicReference<BinaryLogClient>();
+        final BinaryLogClient.EventListener eventListener = new BinaryLogClient.EventListener() {
+
+            @Override
+            public void onEvent(Event event) {
+                if (event.getHeader().getEventType() == EventType.QUERY &&
+                        ((QueryEventData) event.getData()).getSql().toLowerCase().contains("create database")) {
+                    latchForCreateDatabase.countDown();
+                }
+            }
+        };
         replicationStream = new MySQLReplicationStream(uri.getHost(), uri.getPort(),
             bundle.getString("hibernate.connection.username"), bundle.getString("hibernate.connection.password")) {
 
             @Override
             protected void configureBinaryLogClient(final BinaryLogClient binaryLogClient) {
-                binaryLogClient.registerEventListener(new BinaryLogClient.EventListener() {
-
-                    @Override
-                    public void onEvent(Event event) {
-                        if (event.getHeader().getEventType() == EventType.QUERY &&
-                            ((QueryEventData) event.getData()).getSql().toLowerCase().contains("create database")) {
-                            latchForCreateDatabase.countDown();
-                            if (latchForCreateDatabase.getCount() == 0) {
-                                binaryLogClient.unregisterEventListener(this);
-                            }
-                        }
-                    }
-                });
+                binaryLogClientRef.set(binaryLogClient);
+                binaryLogClient.registerEventListener(eventListener);
             }
         };
         replicationStream.connect(DEFAULT_TIMEOUT);
         Class.forName("com.mysql.jdbc.Driver");
         recreateDatabaseForProfiles("master", "master-sdb");
         assertTrue(latchForCreateDatabase.await(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS));
+        binaryLogClientRef.get().unregisterEventListener(eventListener);
     }
 
     private void recreateDatabaseForProfiles(String... profiles) throws Exception {
