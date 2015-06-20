@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.github.shyiko.rook</groupId>
     <artifactId>rook</artifactId>
     <packaging>pom</packaging>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
 
     <name>rook</name>
     <description>Change Data Capture (CDC) toolkit for keeping system layers in sync with the database</description>
@@ -173,57 +171,52 @@
                         <version>1.7</version>
                         <configuration>
                             <target>
-                                <typedef resource="org/jacoco/ant/antlib.xml"/>
+                                <typedef resource="org/jacoco/ant/antlib.xml" />
                                 <report>
                                     <executiondata>
-                                        <fileset dir="rook-target-hibernate4-cache/target/coverage-reports"
-                                                 includes="jacoco-unit.exec"/>
-                                        <fileset dir="supplement/integration-testing/hibernate4-cache-over-mysql/target/coverage-reports"
-                                                 includes="jacoco-unit.exec"/>
-                                        <fileset dir="supplement/integration-testing/hibernate4-fulltextindex-over-mysql/target/coverage-reports"
-                                                 includes="jacoco-unit.exec"/>
+                                        <fileset dir="rook-target-hibernate4-cache/target/coverage-reports" includes="jacoco-unit.exec" />
+                                        <fileset dir="supplement/integration-testing/hibernate4-cache-over-mysql/target/coverage-reports" includes="jacoco-unit.exec" />
+                                        <fileset dir="supplement/integration-testing/hibernate4-fulltextindex-over-mysql/target/coverage-reports" includes="jacoco-unit.exec" />
                                     </executiondata>
                                     <structure name="rook">
                                         <group name="rook-api">
                                             <classfiles>
-                                                <fileset dir="rook-api/target/classes" includes="**/*.class"/>
+                                                <fileset dir="rook-api/target/classes" includes="**/*.class" />
                                             </classfiles>
                                             <sourcefiles>
-                                                <fileset dir="rook-api/src/main/java"/>
+                                                <fileset dir="rook-api/src/main/java" />
                                             </sourcefiles>
                                         </group>
                                         <group name="rook-source-mysql">
                                             <classfiles>
-                                                <fileset dir="rook-source-mysql/target/classes" includes="**/*.class"/>
+                                                <fileset dir="rook-source-mysql/target/classes" includes="**/*.class" />
                                             </classfiles>
                                             <sourcefiles>
-                                                <fileset dir="rook-source-mysql/src/main/java"/>
+                                                <fileset dir="rook-source-mysql/src/main/java" />
                                             </sourcefiles>
                                         </group>
                                         <group name="rook-target-hibernate4-cache">
                                             <classfiles>
-                                                <fileset dir="rook-target-hibernate4-cache/target/classes"
-                                                         includes="**/*.class"/>
+                                                <fileset dir="rook-target-hibernate4-cache/target/classes" includes="**/*.class" />
                                             </classfiles>
                                             <sourcefiles>
-                                                <fileset dir="rook-target-hibernate4-cache/src/main/java"/>
+                                                <fileset dir="rook-target-hibernate4-cache/src/main/java" />
                                             </sourcefiles>
                                         </group>
                                         <group name="rook-target-hibernate4-fulltextindex">
                                             <classfiles>
-                                                <fileset dir="rook-target-hibernate4-fulltextindex/target/classes"
-                                                         includes="**/*.class"/>
+                                                <fileset dir="rook-target-hibernate4-fulltextindex/target/classes" includes="**/*.class" />
                                             </classfiles>
                                             <sourcefiles>
-                                                <fileset dir="rook-target-hibernate4-fulltextindex/src/main/java"/>
+                                                <fileset dir="rook-target-hibernate4-fulltextindex/src/main/java" />
                                             </sourcefiles>
                                         </group>
                                     </structure>
-                                    <html destdir="${project.build.directory}/coverage"/>
-                                    <csv destfile="${project.build.directory}/coverage/coverage.csv"/>
-                                    <xml destfile="${project.build.directory}/coverage/coverage.xml"/>
+                                    <html destdir="${project.build.directory}/coverage" />
+                                    <csv destfile="${project.build.directory}/coverage/coverage.csv" />
+                                    <xml destfile="${project.build.directory}/coverage/coverage.xml" />
                                 </report>
-                                <echo message="Report saved to ${project.build.directory}/coverage/index.html"/>
+                                <echo message="Report saved to ${project.build.directory}/coverage/index.html" />
                             </target>
                         </configuration>
                         <dependencies>
