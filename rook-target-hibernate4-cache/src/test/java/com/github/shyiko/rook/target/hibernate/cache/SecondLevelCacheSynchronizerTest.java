@@ -65,7 +65,7 @@ public class SecondLevelCacheSynchronizerTest extends AbstractHibernateTest {
                 assertTrue(cache.containsEntity(EntityWithCompositeKey.class, firstEntityKey));
                 SecondLevelCacheSynchronizer secondLevelCacheSynchronizer =
                         new SecondLevelCacheSynchronizer(synchronizationContext);
-                secondLevelCacheSynchronizer.onEvent(new DeleteRowsReplicationEvent("rook", "entity_with_cpk",
+                secondLevelCacheSynchronizer.onEvent(new DeleteRowsReplicationEvent(0, "rook", "entity_with_cpk",
                         new Serializable[] {2L, 1L}));
                 assertFalse(cache.containsEntity(EntityWithCompositeKey.class, firstEntityKey));
                 assertTrue(cache.containsEntity(EntityWithCompositeKey.class, secondEntityKey));
@@ -111,14 +111,14 @@ public class SecondLevelCacheSynchronizerTest extends AbstractHibernateTest {
                 assertTrue(cache.containsEntity(Entity.class, ENTITY_ID));
                 SecondLevelCacheSynchronizer secondLevelCacheSynchronizer =
                         new SecondLevelCacheSynchronizer(synchronizationContext);
-                secondLevelCacheSynchronizer.onEvent(new DeleteRowsReplicationEvent("rook", "entity",
+                secondLevelCacheSynchronizer.onEvent(new DeleteRowsReplicationEvent(0, "rook", "entity",
                         new Serializable[] {ENTITY_ID}));
                 assertFalse(cache.containsEntity(Entity.class, ENTITY_ID));
 
                 assertTrue(cache.containsCollection(Entity.class.getName() + ".properties", ENTITY_ID));
 
                 // entity_property table structure [id, name, value, entity_id]
-                secondLevelCacheSynchronizer.onEvent(new DeleteRowsReplicationEvent("rook", "entity_property",
+                secondLevelCacheSynchronizer.onEvent(new DeleteRowsReplicationEvent(0, "rook", "entity_property",
                         new Serializable[]{null, null, null, ENTITY_ID}));
 
                 assertFalse(cache.containsCollection(Entity.class.getName() + ".properties", ENTITY_ID));

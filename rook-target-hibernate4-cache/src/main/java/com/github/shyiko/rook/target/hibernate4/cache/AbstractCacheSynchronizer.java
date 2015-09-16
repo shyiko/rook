@@ -78,6 +78,6 @@ public abstract class AbstractCacheSynchronizer implements ReplicationEventListe
         throw new UnsupportedOperationException("Unexpected " + event.getClass());
     }
 
-    protected abstract void processTX(Collection<RowsMutationReplicationEvent> events);
+    protected abstract void processTX(Collection<RowsMutationReplicationEvent> txEvents);
 
 }

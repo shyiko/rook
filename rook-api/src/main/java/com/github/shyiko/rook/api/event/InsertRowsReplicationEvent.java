@@ -24,12 +24,12 @@ import java.util.List;
  */
 public class InsertRowsReplicationEvent extends RowsMutationReplicationEvent<List<Serializable[]>> {
 
-    public InsertRowsReplicationEvent(String database, String table, List<Serializable[]> rows) {
-        super(database, table, rows);
+    public InsertRowsReplicationEvent(long hostId, String database, String table, List<Serializable[]> rows) {
+        super(hostId, database, table, rows);
     }
 
-    public InsertRowsReplicationEvent(String database, String table, Serializable[] row) {
-        super(database, table, Arrays.asList(new Serializable[][]{row}));
+    public InsertRowsReplicationEvent(long hostId, String database, String table, Serializable[] row) {
+        super(hostId, database, table, Arrays.asList(new Serializable[][]{row}));
     }
 
     @Override

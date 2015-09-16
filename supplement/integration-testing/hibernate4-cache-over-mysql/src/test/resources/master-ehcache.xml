@@ -11,6 +11,8 @@
 
     <cache name="com.github.shyiko.rook.it.h4com.model.RootEntity"
            maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
+    <cache name="com.github.shyiko.rook.it.h4com.model.IgnoredEntity"
+           maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
     <cache name="com.github.shyiko.rook.it.h4com.model.RootEntity.oneToManyEntities"
            maxEntriesLocalHeap="100" overflowToDisk="false" timeToLiveSeconds="120"/>
     <cache name="com.github.shyiko.rook.it.h4com.model.RootEntity.joinedOneToManyEntities"

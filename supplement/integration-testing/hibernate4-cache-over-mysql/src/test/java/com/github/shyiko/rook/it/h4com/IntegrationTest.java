@@ -24,6 +24,7 @@ import com.github.shyiko.rook.api.event.DeleteRowsReplicationEvent;
 import com.github.shyiko.rook.api.event.InsertRowsReplicationEvent;
 import com.github.shyiko.rook.api.event.ReplicationEvent;
 import com.github.shyiko.rook.api.event.UpdateRowsReplicationEvent;
+import com.github.shyiko.rook.it.h4com.model.IgnoredEntity;
 import com.github.shyiko.rook.it.h4com.model.OneToManyEntity;
 import com.github.shyiko.rook.it.h4com.model.OneToOneEntity;
 import com.github.shyiko.rook.it.h4com.model.RootEntity;
@@ -39,11 +40,7 @@ import org.hibernate.service.ServiceRegistry;
 import org.hibernate.service.ServiceRegistryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,14 +49,7 @@ import java.net.URI;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Properties;
-import java.util.ResourceBundle;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -121,7 +111,7 @@ public class IntegrationTest {
     private void recreateDatabase(String connectionURI, String username, String password) throws Exception {
         int delimiter = connectionURI.lastIndexOf("/");
         Connection connection = DriverManager.getConnection(connectionURI.substring(0, delimiter),
-            username, password);
+                username, password);
         try {
             Statement statement = connection.createStatement();
             try {
@@ -151,17 +141,31 @@ public class IntegrationTest {
 
     @Test
     public void testQueryCacheIsNotEvictedWithoutQCS() throws Exception {
-        testQueryCacheEviction(false);
+        testQueryCacheEviction(false, null, 2);
     }
 
     @Test
     public void testQueryCacheIsEvictedByQCS() throws Exception {
-        testQueryCacheEviction(true);
+        testQueryCacheEviction(true, null, 2);
     }
 
-    private void testQueryCacheEviction(final boolean enableQCS) throws Exception {
+    @Test
+    public void testQueryCacheIsNotEvictedWithoutQCSWithIgnoredTable() throws Exception {
+        testQueryCacheEviction(false, IgnoredEntity.class.getSimpleName(), 1);
+    }
+
+    @Test
+    public void testQueryCacheIsEvictedByQCSWithIgnoredTable() throws Exception {
+        testQueryCacheEviction(true, IgnoredEntity.class.getSimpleName(), 1);
+    }
+
+    private void testQueryCacheEviction(final boolean enableQCS, final String ignoredTable, int expectedEvents) throws Exception {
         ExecutionContext masterContext = ExecutionContextHolder.get("master");
         ExecutionContext slaveContext = ExecutionContextHolder.get("slave");
+        HashSet<String> ignoredTables = new HashSet<String>() {{
+            add(ignoredTable);
+        }};
+        replicationStream.setIgnoredTables(ignoredTables);
         if (enableQCS) {
             replicationStream.registerListener(
                 new QueryCacheSynchronizer(new SynchronizationContext(slaveContext.getConfiguration(),
@@ -175,6 +179,7 @@ public class IntegrationTest {
             @Override
             public void execute(Session session) {
                 assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(), 0);
+                assertEquals(session.createQuery("from IgnoredEntity").setCacheable(true).list().size(), 0);
             }
         });
         masterContext.execute(new Callback<Session>() {
@@ -182,15 +187,18 @@ public class IntegrationTest {
             @Override
             public void execute(Session session) {
                 session.persist(new RootEntity("Slytherin"));
+                session.persist(new IgnoredEntity("Gryffindor"));
             }
         });
-        countDownReplicationListener.waitFor(InsertRowsReplicationEvent.class, 1, DEFAULT_TIMEOUT);
+        countDownReplicationListener.waitFor(InsertRowsReplicationEvent.class, expectedEvents, DEFAULT_TIMEOUT);
         slaveContext.execute(new Callback<Session>() {
 
             @Override
             public void execute(Session session) {
                 assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(),
-                    enableQCS ? 1 : 0);
+                        enableQCS ? 1 : 0);
+                assertEquals(session.createQuery("from IgnoredEntity").setCacheable(true).list().size(),
+                        (enableQCS && (ignoredTable == null)) ? 1 : 0);
             }
         });
     }
