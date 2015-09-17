@@ -23,11 +23,13 @@ import java.util.Collection;
  */
 public abstract class RowsMutationReplicationEvent<T extends Collection> implements ReplicationEvent {
 
+    protected final long serverId;
     protected final String schema;
     protected final String table;
     protected final T rows;
 
-    protected RowsMutationReplicationEvent(String schema, String table, T rows) {
+    protected RowsMutationReplicationEvent(long hostId, String schema, String table, T rows) {
+        this.serverId = hostId;
         this.schema = schema;
         this.table = table;
         this.rows = rows;
@@ -43,5 +45,9 @@ public abstract class RowsMutationReplicationEvent<T extends Collection> impleme
 
     public T getRows() {
         return rows;
+    }
+
+    public long getServerId() {
+        return serverId;
     }
 }

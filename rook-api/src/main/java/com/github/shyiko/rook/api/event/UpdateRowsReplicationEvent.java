@@ -27,15 +27,15 @@ import java.util.Map;
 public class UpdateRowsReplicationEvent extends RowsMutationReplicationEvent<List<Map.Entry<Serializable[],
         Serializable[]>>> {
 
-    public UpdateRowsReplicationEvent(String database, String table, List<Map.Entry<Serializable[],
+    public UpdateRowsReplicationEvent(long hostId, String database, String table, List<Map.Entry<Serializable[],
             Serializable[]>> rows) {
-        super(database, table, rows);
+        super(hostId, database, table, rows);
     }
 
     @SuppressWarnings("unchecked")
-    public UpdateRowsReplicationEvent(String database, String table, Serializable[] previousValues,
+    public UpdateRowsReplicationEvent(long hostId, String database, String table, Serializable[] previousValues,
             Serializable[] values) {
-        super(database, table, Arrays.<Map.Entry<Serializable[], Serializable[]>>asList(
+        super(hostId, database, table, Arrays.<Map.Entry<Serializable[], Serializable[]>>asList(
             new AbstractMap.SimpleEntry<Serializable[], Serializable[]>(previousValues, values)));
     }
 

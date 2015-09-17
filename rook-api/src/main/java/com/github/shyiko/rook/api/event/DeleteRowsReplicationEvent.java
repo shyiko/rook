@@ -24,12 +24,12 @@ import java.util.List;
  */
 public class DeleteRowsReplicationEvent extends RowsMutationReplicationEvent<List<Serializable[]>> {
 
-    public DeleteRowsReplicationEvent(String database, String table, List<Serializable[]> rows) {
-        super(database, table, rows);
+    public DeleteRowsReplicationEvent(long hostId, String database, String table, List<Serializable[]> rows) {
+        super(hostId, database, table, rows);
     }
 
-    public DeleteRowsReplicationEvent(String database, String table, Serializable[] row) {
-        super(database, table, Arrays.asList(new Serializable[][] {row}));
+    public DeleteRowsReplicationEvent(long hostId, String database, String table, Serializable[] row) {
+        super(hostId, database, table, Arrays.asList(new Serializable[][] {row}));
     }
 
     @Override
