@@ -27,15 +27,15 @@ import java.util.Map;
 public class UpdateRowsReplicationEvent extends RowsMutationReplicationEvent<List<Map.Entry<Serializable[],
         Serializable[]>>> {
 
-    public UpdateRowsReplicationEvent(long hostId, String database, String table, List<Map.Entry<Serializable[],
+    public UpdateRowsReplicationEvent(long serverId, String schema, String table, List<Map.Entry<Serializable[],
             Serializable[]>> rows) {
-        super(hostId, database, table, rows);
+        super(serverId, schema, table, rows);
     }
 
     @SuppressWarnings("unchecked")
-    public UpdateRowsReplicationEvent(long hostId, String database, String table, Serializable[] previousValues,
+    public UpdateRowsReplicationEvent(long serverId, String schema, String table, Serializable[] previousValues,
             Serializable[] values) {
-        super(hostId, database, table, Arrays.<Map.Entry<Serializable[], Serializable[]>>asList(
+        super(serverId, schema, table, Arrays.<Map.Entry<Serializable[], Serializable[]>>asList(
             new AbstractMap.SimpleEntry<Serializable[], Serializable[]>(previousValues, values)));
     }
 
@@ -43,7 +43,8 @@ public class UpdateRowsReplicationEvent extends RowsMutationReplicationEvent<Lis
     public String toString() {
         final StringBuilder sb = new StringBuilder();
         sb.append("UpdateRowsReplicationEvent");
-        sb.append("{schema='").append(schema).append('\'');
+        sb.append("{serverId=").append(serverId);
+        sb.append(", schema='").append(schema).append('\'');
         sb.append(", table='").append(table).append('\'');
         sb.append(", rows=[");
         if (!rows.isEmpty()) {

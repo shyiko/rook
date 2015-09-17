@@ -24,19 +24,20 @@ import java.util.List;
  */
 public class DeleteRowsReplicationEvent extends RowsMutationReplicationEvent<List<Serializable[]>> {
 
-    public DeleteRowsReplicationEvent(long hostId, String database, String table, List<Serializable[]> rows) {
-        super(hostId, database, table, rows);
+    public DeleteRowsReplicationEvent(long serverId, String schema, String table, List<Serializable[]> rows) {
+        super(serverId, schema, table, rows);
     }
 
-    public DeleteRowsReplicationEvent(long hostId, String database, String table, Serializable[] row) {
-        super(hostId, database, table, Arrays.asList(new Serializable[][] {row}));
+    public DeleteRowsReplicationEvent(long serverId, String schema, String table, Serializable[] row) {
+        super(serverId, schema, table, Arrays.asList(new Serializable[][]{row}));
     }
 
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();
         sb.append("DeleteRowsReplicationEvent");
-        sb.append("{schema='").append(schema).append('\'');
+        sb.append("{serverId=").append(serverId);
+        sb.append(", schema='").append(schema).append('\'');
         sb.append(", table='").append(table).append('\'');
         sb.append(", rows=[");
         if (!rows.isEmpty()) {

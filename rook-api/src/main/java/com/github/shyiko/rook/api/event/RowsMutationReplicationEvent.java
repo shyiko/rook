@@ -28,11 +28,15 @@ public abstract class RowsMutationReplicationEvent<T extends Collection> impleme
     protected final String table;
     protected final T rows;
 
-    protected RowsMutationReplicationEvent(long hostId, String schema, String table, T rows) {
-        this.serverId = hostId;
+    protected RowsMutationReplicationEvent(long serverId, String schema, String table, T rows) {
+        this.serverId = serverId;
         this.schema = schema;
         this.table = table;
         this.rows = rows;
+    }
+
+    public long getServerId() {
+        return serverId;
     }
 
     public String getSchema() {
@@ -45,9 +49,5 @@ public abstract class RowsMutationReplicationEvent<T extends Collection> impleme
 
     public T getRows() {
         return rows;
-    }
-
-    public long getServerId() {
-        return serverId;
     }
 }
