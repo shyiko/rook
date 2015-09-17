@@ -84,6 +84,7 @@
                     <failsOnError>true</failsOnError>
                     <configLocation>supplement/codequality/checkstyle.xml</configLocation>
                     <headerLocation>supplement/codequality/license.header</headerLocation>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
                     <consoleOutput>true</consoleOutput>
                 </configuration>
                 <executions>

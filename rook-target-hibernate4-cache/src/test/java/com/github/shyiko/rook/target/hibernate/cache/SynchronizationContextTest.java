@@ -52,7 +52,8 @@ public class SynchronizationContextTest extends AbstractHibernateTest {
         Serializable[] collectionfields = new Serializable[mappingsByName.size()];
         collectionfields[mappingsByName.get("id")] = 2L;
         collectionfields[mappingsByName.get("entity_id")] = 1L;
-        collectionfields[mappingsByName.get("name")] = "Answer to the Ultimate Question of Life, the Universe, and Everything";
+        collectionfields[mappingsByName.get("name")] =
+            "Answer to the Ultimate Question of Life, the Universe, and Everything";
         collectionfields[mappingsByName.get("value")] = "42";
 
         assertEquals(collectionEvictionTarget.getPrimaryKey().getIdentifier(collectionfields), (Long) 1L);

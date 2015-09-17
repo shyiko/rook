@@ -76,8 +76,7 @@ public class SecondLevelCacheSynchronizerTest extends AbstractHibernateTest {
     @Test
     public void testEvictionOfEntityCollection() throws Exception {
         final Cache cache = synchronizationContext.getSessionFactory().getCache();
-        final AtomicLong idHolder = new AtomicLong();
-
+        final AtomicLong entityId = new AtomicLong();
         executeInTransaction(new Callback<Session>() {
 
             @Override
@@ -91,37 +90,34 @@ public class SecondLevelCacheSynchronizerTest extends AbstractHibernateTest {
                 entityProperty.setEnclosingEntity(entity);
                 entity.getProperties().add(entityProperty);
 
-                idHolder.set((Long) session.save(entity));
+                entityId.set((Long) session.save(entity));
             }
         });
-        final long ENTITY_ID = idHolder.get();
-
         executeInTransaction(new Callback<Session>() {
 
             @Override
             public void execute(Session session) {
-                assertNotNull(session.get(Entity.class, ENTITY_ID));
+                assertNotNull(session.get(Entity.class, entityId.get()));
             }
         });
-
         executeInTransaction(new Callback<Session>() {
 
             @Override
             public void execute(Session obj) {
-                assertTrue(cache.containsEntity(Entity.class, ENTITY_ID));
+                assertTrue(cache.containsEntity(Entity.class, entityId.get()));
                 SecondLevelCacheSynchronizer secondLevelCacheSynchronizer =
                         new SecondLevelCacheSynchronizer(synchronizationContext);
                 secondLevelCacheSynchronizer.onEvent(new DeleteRowsReplicationEvent(0, "rook", "entity",
-                        new Serializable[] {ENTITY_ID}));
-                assertFalse(cache.containsEntity(Entity.class, ENTITY_ID));
+                        new Serializable[] {entityId.get()}));
+                assertFalse(cache.containsEntity(Entity.class, entityId.get()));
 
-                assertTrue(cache.containsCollection(Entity.class.getName() + ".properties", ENTITY_ID));
+                assertTrue(cache.containsCollection(Entity.class.getName() + ".properties", entityId.get()));
 
                 // entity_property table structure [id, name, value, entity_id]
                 secondLevelCacheSynchronizer.onEvent(new DeleteRowsReplicationEvent(0, "rook", "entity_property",
-                        new Serializable[]{null, null, null, ENTITY_ID}));
+                        new Serializable[]{null, null, null, entityId.get()}));
 
-                assertFalse(cache.containsCollection(Entity.class.getName() + ".properties", ENTITY_ID));
+                assertFalse(cache.containsCollection(Entity.class.getName() + ".properties", entityId.get()));
             }
         });
     }
