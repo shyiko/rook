@@ -40,4 +40,8 @@ public class IgnoredEntity {
     public IgnoredEntity(String name) {
         this.name = name;
     }
+
+    public long getId() {
+        return id;
+    }
 }
