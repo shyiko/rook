@@ -12,6 +12,7 @@
         <property name="cache.use_second_level_cache">true</property>
         <mapping class="com.github.shyiko.rook.it.h4com.model.IgnoredEntity"/>
         <mapping class="com.github.shyiko.rook.it.h4com.model.RootEntity"/>
+        <mapping class="com.github.shyiko.rook.it.h4com.model.CompositeKeyEntity"/>
         <mapping class="com.github.shyiko.rook.it.h4com.model.OneToOneEntity"/>
         <mapping class="com.github.shyiko.rook.it.h4com.model.OneToManyEntity"/>
         <mapping class="com.github.shyiko.rook.it.h4com.model.JoinedOneToManyEntity"/>

@@ -22,6 +22,8 @@ import org.hibernate.mapping.KeyValue;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
+import org.hibernate.type.EmbeddedComponentType;
+import org.hibernate.type.Type;
 
 import java.io.Serializable;
 import java.lang.reflect.Field;
@@ -45,7 +47,12 @@ public class PrimaryKey {
 
     public PrimaryKey(PersistentClass persistentClass, Map<String, Integer> columnIndexByNameMap) {
         this(persistentClass.getKey(), persistentClass.getTable(), columnIndexByNameMap);
-        entityClass = persistentClass.getMappedClass();
+        final Type type = persistentClass.getIdentifier().getType();
+        if (type instanceof EmbeddedComponentType) {
+            entityClass = type.getReturnedClass();
+        } else {
+            entityClass = persistentClass.getMappedClass();
+        }
     }
 
     private PrimaryKey(KeyValue keyValue, Table table, Map<String, Integer> columnIndexByNameMap) {

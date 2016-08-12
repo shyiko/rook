@@ -28,6 +28,7 @@ import com.github.shyiko.rook.it.h4com.model.IgnoredEntity;
 import com.github.shyiko.rook.it.h4com.model.OneToManyEntity;
 import com.github.shyiko.rook.it.h4com.model.OneToOneEntity;
 import com.github.shyiko.rook.it.h4com.model.RootEntity;
+import com.github.shyiko.rook.it.h4com.model.CompositeKeyEntity;
 import com.github.shyiko.rook.source.mysql.MySQLReplicationStream;
 import com.github.shyiko.rook.target.hibernate4.cache.HibernateCacheSynchronizer;
 import com.github.shyiko.rook.target.hibernate4.cache.QueryCacheSynchronizer;
@@ -141,22 +142,22 @@ public class IntegrationTest {
 
     @Test
     public void testQueryCacheIsNotEvictedWithoutQCS() throws Exception {
-        testQueryCacheEviction(false, null, 2);
+        testQueryCacheEviction(false, null, 3);
     }
 
     @Test
     public void testQueryCacheIsEvictedByQCS() throws Exception {
-        testQueryCacheEviction(true, null, 2);
+        testQueryCacheEviction(true, null, 3);
     }
 
     @Test
     public void testQueryCacheIsNotEvictedWithoutQCSWithIgnoredTable() throws Exception {
-        testQueryCacheEviction(false, IgnoredEntity.class.getSimpleName(), 1);
+        testQueryCacheEviction(false, IgnoredEntity.class.getSimpleName(), 2);
     }
 
     @Test
     public void testQueryCacheIsEvictedByQCSWithIgnoredTable() throws Exception {
-        testQueryCacheEviction(true, IgnoredEntity.class.getSimpleName(), 1);
+        testQueryCacheEviction(true, IgnoredEntity.class.getSimpleName(), 2);
     }
 
     private void testQueryCacheEviction(final boolean enableQCS, final String ignoredTable, int expectedEvents) throws Exception {
@@ -180,14 +181,18 @@ public class IntegrationTest {
             public void execute(Session session) {
                 assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(), 0);
                 assertEquals(session.createQuery("from IgnoredEntity").setCacheable(true).list().size(), 0);
+                assertEquals(session.createQuery("from CompositeKeyEntity").setCacheable(true).list().size(), 0);
             }
         });
         masterContext.execute(new Callback<Session>() {
 
             @Override
             public void execute(Session session) {
-                session.persist(new RootEntity("Slytherin"));
-                session.persist(new IgnoredEntity("Gryffindor"));
+                final RootEntity rootEntity = new RootEntity("Slytherin");
+                session.persist(rootEntity);
+                final IgnoredEntity ignoredEntity = new IgnoredEntity("Gryffindor");
+                session.persist(ignoredEntity);
+                session.persist(new CompositeKeyEntity(rootEntity.getId(), ignoredEntity.getId()));
             }
         });
         countDownReplicationListener.waitFor(InsertRowsReplicationEvent.class, expectedEvents, DEFAULT_TIMEOUT);
@@ -196,6 +201,8 @@ public class IntegrationTest {
             @Override
             public void execute(Session session) {
                 assertEquals(session.createQuery("from RootEntity").setCacheable(true).list().size(),
+                        enableQCS ? 1 : 0);
+                assertEquals(session.createQuery("from CompositeKeyEntity").setCacheable(true).list().size(),
                         enableQCS ? 1 : 0);
                 assertEquals(session.createQuery("from IgnoredEntity").setCacheable(true).list().size(),
                         (enableQCS && (ignoredTable == null)) ? 1 : 0);
@@ -224,20 +231,23 @@ public class IntegrationTest {
         }
         CountDownReplicationListener countDownReplicationListener = new CountDownReplicationListener();
         replicationStream.registerListener(countDownReplicationListener);
-        final AtomicReference<Serializable> rootEntityId = new AtomicReference<Serializable>();
+        final AtomicReference<Serializable> rootEntityId = new AtomicReference<Serializable>(),
+                ignoredEntityId = new AtomicReference<Serializable>();
         masterContext.execute(new Callback<Session>() {
 
             @Override
             public void execute(Session session) {
                 rootEntityId.set(session.save(new RootEntity(
-                    "Slytherin",
-                    new OneToOneEntity("Severus Snape"),
-                    new HashSet<OneToManyEntity>(Arrays.asList(
-                        new OneToManyEntity("Draco Malfoy"),
-                        new OneToManyEntity("Vincent Crabbe"),
-                        new OneToManyEntity("Gregory Goyle")
-                    ))
+                        "Slytherin",
+                        new OneToOneEntity("Severus Snape"),
+                        new HashSet<OneToManyEntity>(Arrays.asList(
+                                new OneToManyEntity("Draco Malfoy"),
+                                new OneToManyEntity("Vincent Crabbe"),
+                                new OneToManyEntity("Gregory Goyle")
+                        ))
                 )));
+                ignoredEntityId.set(session.save(new IgnoredEntity("Hufflepuff")));
+                session.persist(new CompositeKeyEntity((Long)rootEntityId.get(), (Long)ignoredEntityId.get()));
             }
         });
         slaveContext.execute(new Callback<Session>() {
@@ -246,6 +256,7 @@ public class IntegrationTest {
             public void execute(Session session) {
                 RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId.get());
                 assertEquals(rootEntity.getName(), "Slytherin");
+                assertEquals(rootEntity.getCompositeRelations().size(), 1);
             }
         });
         masterContext.execute(new Callback<Session>() {
@@ -254,16 +265,19 @@ public class IntegrationTest {
             public void execute(Session session) {
                 RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId.get());
                 rootEntity.setName("Slytherin House");
+                rootEntity.getCompositeRelations().clear();
                 session.merge(rootEntity);
             }
         });
         countDownReplicationListener.waitFor(UpdateRowsReplicationEvent.class, 1, DEFAULT_TIMEOUT);
+        countDownReplicationListener.waitFor(DeleteRowsReplicationEvent.class, 1, DEFAULT_TIMEOUT);
         slaveContext.execute(new Callback<Session>() {
 
             @Override
             public void execute(Session session) {
                 RootEntity rootEntity = (RootEntity) session.get(RootEntity.class, rootEntityId.get());
                 assertEquals(rootEntity.getName(), enableSLCS ? "Slytherin House" : "Slytherin");
+                assertEquals(rootEntity.getCompositeRelations().size(), enableSLCS ? 0 : 1);
             }
         });
         masterContext.execute(new Callback<Session>() {

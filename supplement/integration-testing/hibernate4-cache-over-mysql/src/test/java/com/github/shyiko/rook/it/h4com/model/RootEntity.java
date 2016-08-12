@@ -28,6 +28,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -61,6 +62,10 @@ public class RootEntity {
         CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.DETACH
     }, fetch = FetchType.LAZY, mappedBy = "rootEntity")
     private Set<JoinedOneToManyEntity> joinedOneToManyEntities;
+    @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
+    @OneToMany(mappedBy = "rootId", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @LazyCollection(LazyCollectionOption.TRUE)
+    private Set<CompositeKeyEntity> compositeRelations = new HashSet<CompositeKeyEntity>();
 
     public RootEntity() {
     }
@@ -73,6 +78,10 @@ public class RootEntity {
         this.name = name;
         this.oneToOneEntity = oneToOneEntity;
         this.oneToManyEntities = oneToManyEntities;
+    }
+
+    public long getId() {
+        return id;
     }
 
     public String getName() {
@@ -108,5 +117,13 @@ public class RootEntity {
             directedOneToManyEntity.setRootEntity(this);
         }
         this.joinedOneToManyEntities = joinedOneToManyEntities;
+    }
+
+    public Set<CompositeKeyEntity> getCompositeRelations() {
+        return compositeRelations;
+    }
+
+    public void setCompositeRelations(Set<CompositeKeyEntity> compositeRelations) {
+        this.compositeRelations = compositeRelations;
     }
 }
