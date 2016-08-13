@@ -16,12 +16,12 @@ The latest release version available through [Maven Central](http://search.maven
     <dependency>
         <groupId>com.github.shyiko.rook</groupId>
         <artifactId>rook-source-mysql</artifactId>
-        <version>0.1.1</version>
+        <version>0.1.3</version>
     </dependency>
     <dependency>
         <groupId>com.github.shyiko.rook</groupId>
         <artifactId>rook-target-hibernate4-cache</artifactId>
-        <version>0.1.1</version>
+        <version>0.1.3</version>
     </dependency>
 </dependencies>
 ```
@@ -48,12 +48,12 @@ As a result, either each @IndexedEmbedded-annotated field/method MUST have corre
     <dependency>
         <groupId>com.github.shyiko.rook</groupId>
         <artifactId>rook-source-mysql</artifactId>
-        <version>0.1.1</version>
+        <version>0.1.3</version>
     </dependency>
     <dependency>
         <groupId>com.github.shyiko.rook</groupId>
         <artifactId>rook-target-hibernate4-fulltextindex</artifactId>
-        <version>0.1.1</version>
+        <version>0.1.3</version>
     </dependency>
 </dependencies>
 ```
