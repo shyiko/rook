@@ -1,6 +1,2 @@
 language: java
-script: 'if [[ $TRAVIS_REPO_SLUG == "shyiko/rook" && $TRAVIS_BRANCH == "master" && $TRAVIS_PULL_REQUEST == "false" ]]; then mvn -P with-sources-and-javadocs -Ddeploy=snapshot -DskipTests=true -s .travis.settings.xml; else mvn clean install; fi'
-env: 
-  global: 
-  - secure: AjeWt1KvcfpTqHW2/5UVsfVc/S9daNM6g099Bum+BxaILlNvsgQvjT+BTfQK96AdLXrJ6irRHdSfO6XR9WQxG18uz932pkZCAqqIh+zPIeYD+OJ66hoCYlAAjWpkYUP/Jx8P3lvf7Tu+k1k+HfjbgC7G3YRT0uCIm+G0GjaD9BU=
-  - secure: EiG4O9aoHH215TxrczX+a6G75l4RsAf6SMpekSuQLXgAT8UzcAKMASMKtpwmwx8FAvJ8uYEh8W0akyuO9V8xXFXXB2hccGloJuwQi+Du0/837P6oHDx7WMZo5NOepzwrvJCdtUBRgH8uuTMyG9UMMFqRqnVA0cV3antIId5Vj3k=
+script: ./mvnw clean verify
