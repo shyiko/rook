@@ -8,12 +8,12 @@
         <groupId>com.github.shyiko.rook</groupId>
         <artifactId>rook</artifactId>
         <relativePath>../../../pom.xml</relativePath>
-        <version>0.1.2-SNAPSHOT</version>
+        <version>0.1.4-SNAPSHOT</version>
     </parent>
 
     <groupId>com.github.shyiko.rook.examples</groupId>
     <artifactId>hibernate4-fulltextindex-over-mysql</artifactId>
-    <version>0.1.2-SNAPSHOT</version>
+    <version>0.1.4-SNAPSHOT</version>
 
     <properties>
         <vagrant.bin>vagrant</vagrant.bin>
